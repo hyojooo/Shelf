@@ -1,0 +1,45 @@
+# 应用基础信息
+appId: com.shelf.app
+productName: Shelf
+copyright: Copyright © 2026 Shelf
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - out/**/*
+  - package.json
+
+# macOS 打包配置（最低 10.15 Catalina）
+mac:
+  category: public.app-category.utilities
+  minimumSystemVersion: "10.15"
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: assets/icon.png
+
+# Windows 打包配置（最低 Windows 10）
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+# 自动更新（GitHub Releases 作为更新源，可改为私有服务器）
+publish:
+  - provider: github
+    owner: shelf
+    repo: shelf
+
+# asar 加密主进程代码
+asar: true
