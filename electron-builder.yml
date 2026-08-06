@@ -14,7 +14,7 @@ files:
 # macOS 打包配置（最低 10.15 Catalina）
 mac:
   category: public.app-category.utilities
-  minimumSystemVersion: "10.15"
+  minimumSystemVersion: '10.15'
   target:
     - target: dmg
       arch:
@@ -38,8 +38,8 @@ nsis:
 # 自动更新（GitHub Releases 作为更新源，可改为私有服务器）
 publish:
   - provider: github
-    owner: shelf
-    repo: shelf
+    owner: hyojooo
+    repo: Shelf
 
 # asar 加密主进程代码
 asar: true
