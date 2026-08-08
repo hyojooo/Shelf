@@ -32,6 +32,20 @@
 - **macOS**：粘贴功能需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权 Shelf；托盘常驻时会隐藏 Dock 图标。
 - **Windows**：开机自启通过安装器注册；粘贴使用系统快捷键模拟。
 
+## 📦 发布（维护者）
+
+自动更新依赖 GitHub Releases 元数据（`latest.yml` 等），必须用 publish 流程发布，不要手动上传安装包。
+
+```bash
+# 1. 生成有 repo 权限的 GitHub Token，导出为环境变量（建议写入 ~/.zshrc）
+export GH_TOKEN=你的token
+
+# 2. 打包 + 自动创建 Release + 上传安装包与更新元数据
+npm run publish
+```
+
+> 仅本地出包不上传：`npm run dist:mac` / `npm run dist:win`。
+
 ## 📄 License
 
 [MIT](./LICENSE)

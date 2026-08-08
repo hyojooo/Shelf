@@ -15,12 +15,14 @@ files:
 mac:
   category: public.app-category.utilities
   minimumSystemVersion: '10.15'
+  identity: null  # 显式禁用代码签名（国内 Apple 时间戳服务器不可达，空字符串""会被当成自动检测而非禁用）
+  forceCodeSigning: false
   target:
     - target: dmg
       arch:
         - x64
         - arm64
-  icon: assets/icon.png
+  icon: assets/icon.icns   # 由 scripts/gen_icon.py 生成（含多尺寸）
 
 # Windows 打包配置（最低 Windows 10）
 win:
@@ -28,7 +30,7 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: assets/icon.png
+  icon: assets/icon.png   # 由 scripts/gen_icon.py 生成（1024²）
 
 nsis:
   oneClick: false
