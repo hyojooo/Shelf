@@ -5,8 +5,8 @@
   --text: #1c1c1e;
   --muted: #8a8a8e;
   --border: #e3e5e8;
-  --accent: #2f6df6;
-  --accent-soft: #e8f0ff;
+  --accent: #059669;
+  --accent-soft: #e7f8f1;
   --hover: #eef1f5;
   --fav: #f5b400;
   --danger: #e5484d;
@@ -20,8 +20,8 @@
   --text: #e8e8ea;
   --muted: #9a9aa0;
   --border: #2c2e33;
-  --accent: #4c8dff;
-  --accent-soft: #1c2b44;
+  --accent: #34d399;
+  --accent-soft: #0f2e23;
   --hover: #26282c;
   --fav: #ffce42;
   --danger: #ff6b6f;
@@ -319,8 +319,8 @@ body {
   font-size: 15px;
 }
 
-/* ===== 预览（右侧固定列，非浮层抽屉） ===== */
-.preview {
+/* ===== 右侧区域（预览 / 空状态） ===== */
+.preview-area {
   position: relative;
   flex: 1;
   min-width: 200px;
@@ -328,8 +328,19 @@ body {
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ===== 预览（右侧固定列，非浮层抽屉） ===== */
+.preview {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   animation: fade-in 0.14s ease-out;
   z-index: 5;
+  min-height: 0;
 }
 
 .preview-head {
@@ -358,6 +369,7 @@ body {
   font-family: 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12px;
   line-height: 1.5;
+  user-select: text;
 }
 
 .preview-img {
@@ -401,6 +413,31 @@ body {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+/* ===== 右侧空状态（小熊） ===== */
+.preview-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  user-select: none;
+}
+.preview-empty .bear {
+  animation: bear-float 3s ease-in-out infinite;
+  opacity: 0.85;
+}
+.preview-empty__text {
+  font-size: 13px;
+  color: var(--muted);
+  opacity: 0.6;
+  letter-spacing: 0.3px;
+}
+@keyframes bear-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 /* ===== 设置弹窗（优雅重设计版） ===== */
@@ -764,4 +801,36 @@ body {
 .icon-btn:hover {
   background: var(--panel);
   color: var(--text);
+}
+
+/* ===== 独立偏好设置窗口 ===== */
+.pref-body {
+  margin: 0;
+  background: var(--bg);
+  overflow: hidden;
+}
+.pref-root {
+  position: absolute;
+  inset: 0;
+}
+/* 让设置弹窗铺满独立窗口（去掉居中 / 遮罩感） */
+.pref-root .modal {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+}
+/* 标题栏可拖拽（frameless 窗口），关闭按钮不可拖拽 */
+.pref-root .modal-head {
+  -webkit-app-region: drag;
+  cursor: default;
+  padding-top: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.pref-root .icon-btn {
+  -webkit-app-region: no-drag;
 }

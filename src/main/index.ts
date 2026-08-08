@@ -5,8 +5,9 @@ import { installCrashHandlers, logError } from './logger'
 import { loadSettings, getSettings, saveSettings } from './settings'
 import { ClipStore } from './store'
 import { startClipboardMonitor, suppressNextCapture } from './clipboard'
-import { createPanelWindow, toggle, hide, getWindow, isVisible, getSourceApp } from './window'
+import { createPanelWindow, toggle, hide, getWindow, isVisible, getSourceApp, showPanel } from './window'
 import { createTray } from './tray'
+import { openPreferencesWindow } from './preferences'
 import { registerShortcut, unregister, unregisterAll } from './shortcut'
 import { setupUpdater, checkForUpdates, quitAndInstall } from './updater'
 
@@ -61,8 +62,8 @@ function sendPasteKeystroke(targetApp: string): void {
 }
 
 function openSettings(): void {
-  if (!isVisible()) showPanel(getSettings().panelPosition)
-  getWindow()?.webContents.send(IPC.OPEN_SETTINGS)
+  // 菜单栏「偏好设置」打开独立窗口（与面板内设置页共用 SettingsForm）
+  openPreferencesWindow()
 }
 
 async function bootstrap(): Promise<void> {
@@ -74,7 +75,7 @@ async function bootstrap(): Promise<void> {
 
   createPanelWindow()
   setupUpdater(getWindow)
-  createTray({ show: () => showPanel(getSettings().panelPosition), openSettings, quit: () => app.quit() })
+  createTray({ show: () => showPanel(getSettings().panelPosition), openPreferences: openSettings, quit: () => app.quit() })
 
   applyShortcut(settings.globalShortcut)
   app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, args: ['--hidden'] })

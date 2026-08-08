@@ -21,8 +21,8 @@
 clipboard-manager/
 ├── .npmrc                    # 淘宝镜像源（关键：解决 Electron 下载卡死）
 ├── package.json              # 依赖与脚本
-├── electron.vite.config.ts   # 三进程构建配置（main/preload/renderer 分离）
-├── electron-builder.yml      # 打包配置（mac/win，需补 assets 图标）
+├── electron.vite.config.ts   # 三进程构建配置；renderer 多入口（index + preferences）
+├── electron-builder.yml      # 打包配置（mac/win，图标已生成 + extraResources 拷贝托盘图标）
 ├── tsconfig.json
 ├── src/
 │   ├── shared/               # 主/渲染共享的纯逻辑（可单测、无 Electron 依赖）
@@ -36,7 +36,8 @@ clipboard-manager/
 │   │   ├── clipboard.ts      # 剪切板监听 + 捕获（含抑制回环 suppressNextCapture）
 │   │   ├── store.ts          # 内存存储 + JSON 原子持久化 + 图片压缩存盘
 │   │   ├── settings.ts       # 设置读写（maxItems/cleanupBatch 等）
-│   │   ├── tray.ts           # 托盘常驻图标（macOS 隐藏 Dock）
+│   │   ├── tray.ts           # 菜单栏托盘：点击弹出菜单（打开面板/偏好设置/退出）；图标 assets/icon.png 缩放 22px
+│   │   ├── preferences.ts    # 独立偏好设置窗口（frameless 单实例，复用 SettingsForm，✕ 关闭）
 │   │   ├── shortcut.ts       # globalShortcut 注册/注销
 │   │   ├── updater.ts        # electron-updater 更新检查
 │   │   └── logger.ts         # 全局异常/崩溃日志 → userData/logs/
@@ -47,6 +48,8 @@ clipboard-manager/
 │       ├── clip-api.ts       # 【关键】安全访问 window.clip 的包装层 getClip()
 │       ├── main.tsx          # React 挂载入口
 │       ├── index.html
+│       ├── preferences.html  # 独立偏好设置窗口 HTML 入口（electron-vite 多入口）
+│       ├── preferences.tsx   # 独立偏好设置窗口：挂载 SettingsForm，✕ 关闭（window.close）
 │       ├── store/useStore.ts # zustand 状态管理
 │       ├── components/
 │       │   ├── Tabs.tsx          # 全部/文本/图片/收藏 分类标签（收藏带 SVG 星标）
@@ -54,8 +57,8 @@ clipboard-manager/
 │       │   ├── ClipList.tsx      # 列表容器（接入虚拟滚动）；收藏星标/删除 X 为 SVG
 │       │   ├── VirtualList.tsx   # 自研虚拟滚动
 │       │   ├── Preview.tsx       # 单击预览（右侧固定列，非浮层抽屉）；关闭按钮 SVG
-│       │   └── Settings.tsx      # 设置页：分组卡片式 UI、Toggle 开关、面板位置选择器、快捷键捕获、数值输入框
-│       └── styles/global.css  # CSS 变量深/浅色适配 + 动画
+│       │   └── Settings.tsx      # 设置页：拆出可复用 SettingsForm（无遮罩）；Settings 为面板弹窗包装
+│       └── styles/global.css  # CSS 变量深/浅色适配 + 动画 + 偏好窗口 .pref-root
 └── tests/
     └── logic.test.ts         # 纯逻辑单测（去重/搜索/清理，17 用例）
 ```
@@ -81,6 +84,12 @@ clipboard-manager/
 
 13. **数值输入框用 `type="text"` + `inputMode="numeric"`**：设置页的「最大存储条数 / 超量时单次清理数」**不要**用 `type="number"`（原生行为无法全选清空、空值会自动回填、移动端体验差）。正确实现：`onChange` 用 `replace(/\D/g,'')` 过滤非数字、空值暂存 0，`onBlur` 时 `Math.max(10, val)` 钳到最小值 10 再 `save()`。
 
+14. **右侧预览关闭时显示「小熊」空状态**：`App.tsx` 的 `.preview-area` 容器始终渲染（无论有无预览），有 `previewId` 时显示 `<Preview>`，无预览时显示居中的可爱小熊 SVG 空状态（`.preview-empty` + `.bear-float` 轻微上下浮动动画 + 提示文字「选择一条记录查看详情」）。小熊用 `--muted`/`--accent` 着色，深/浅色自动适配。注意：关闭预览同时应 `select(null)` 取消左侧选中态，保持一致（见第 5 节对应坑）。
+
+15. **预览关闭需同步取消左侧选中**：Preview 右上角 ✕ 的 `onClose` 必须同时 `preview(null)` **和** `select(null)`，否则左侧列表仍高亮选中项、视觉与关闭动作不一致。面板隐藏 / Esc 键等其它关闭路径已自带 `select(null)`，无需改动；仅 Preview 的 `onClose` 历史上漏过。
+
+16. **预览文本支持鼠标部分选中**：`body` 全局 `user-select: none`（防止拖拽列表项误选文字），但 `.preview-text` 需显式覆写 `user-select: text` 才能在该区域选中复制。改这两个之一都要注意配对：动了全局 `user-select` 或预览样式时要确认仍可选中。
+
 ---
 
 ## 4. 10 项功能实现状态（全部完成）
@@ -91,8 +100,8 @@ clipboard-manager/
 | 2 | 全局快捷键唤起 + 始终置顶 + 失焦隐藏 | window.ts / shortcut.ts |
 | 3 | 分类标签页（全部/文本/图片/收藏）+ 实时模糊搜索 | Tabs / SearchBar / shared/search.ts |
 | 4 | 单击预览（右侧固定列）+ 双击粘贴（hide 先行落点修正）+ 快捷键复制 | App / Preview / 主进程 sendPasteKeystroke |
-| 5 | 菜单栏常驻托盘 | tray.ts |
-| 6 | 设置：快捷键/最大条数/超量单次清理数/自启/主题/面板位置 | Settings / settings.ts |
+| 5 | 菜单栏常驻托盘（点击弹菜单：打开面板/偏好设置/退出） | tray.ts |
+| 6 | 设置：快捷键/最大条数/超量单次清理数/自启/主题/面板位置；独立偏好设置窗口 | Settings / preferences / settings.ts |
 | 7 | 收藏置顶 + 删除单条 + 清空全部 | store.ts（不可变更新 + 列表排序） |
 | 8 | 本地持久化 + 图片压缩存盘 | store.ts（JSON + JPEG） |
 | 9 | 超量自动清理（收藏豁免，最旧 200） | shared/cleanup.ts |
@@ -117,6 +126,9 @@ clipboard-manager/
 | **全局快捷键开关反了** | 按「打开」热键面板不弹、按「关闭」热键面板反而弹 | 根因：`applyShortcut` 的回调误用 `showPanel()`（永远只显示），应改用 `toggle()`（`window.ts` 暴露），实现「隐藏→弹、可见→关」的切换语义 |
 | **数值输入框删不干净** | 设置页「最大条数 / 清理数」无法全选清空，删到空又弹回旧值 | 根因：`type="number"` 原生行为 + `onChange` 里空值立刻 `Math.max(10, ...)` 回填。修复：改用 `type="text"`+`inputMode="numeric"`，`onChange` 空值暂存 0、`onBlur` 才钳到最小值 10 并保存 |
 | **收藏没有统一入口** | 收藏的条目散落在「全部」里，找不到在哪看 | `ClipTab` 增加 `'favorite'` → `filterClips` 加 favorite 分支 → `Tabs.tsx` 加第四个「收藏」标签（SVG 星标）；注意 `types.ts`（shared）与 `search.ts` 两处 `ClipTab` 类型都要同步加 |
+| **白色托盘图标致 app 启动失败** | 把托盘图标换成白色 tray.png + `setTemplateImage(true)` 后 app 起不来 | 已回滚到用 `assets/icon.png` 缩放 22px（紫色）。白色图标需排查 `setTemplateImage`/`addRepresentation` 在当前 Electron 版本的行为，不要简单替换图片。 |
+| **关闭预览左侧仍选中** | 点预览 ✕ 关掉右侧后，左侧列表项还是绿色高亮 | 根因：Preview 的 `onClose` 只 `preview(null)` 没清选中。修复：`onClose={() => { preview(null); select(null) }}`。其它关闭路径（面板隐藏/Esc）本就带 `select(null)`，仅此一处漏过。 |
+| **预览文本无法鼠标选中** | 右侧详情文本拖动鼠标选不中 | 根因：`body { user-select:none }` 全局禁选（防拖拽列表误选），未给预览区恢复。修复：`.preview-text` 加 `user-select:text` 覆盖。注意：不要用 `user-select:auto`（部分引擎下仍受限），用 `text` 才稳。 |
 
 ---
 
@@ -139,15 +151,16 @@ npm run dist:win  # 打包 Windows nsis
 
 ---
 
-## 7. 当前待办 / 注意事项
+## 7. 当前状态 / 注意事项
 
-- [ ] **图标缺失**：`assets/` 目录需要 `icon.png` + 托盘图标，打包前必须补，否则托盘/打包报错。
-- [ ] **粘贴功能依赖系统权限**：macOS 需「系统设置 → 隐私与安全 → 辅助功能」授权给应用；当前用 `osascript` 模拟 Cmd+V。
-- [ ] **未实机验证 GUI**：此项目在沙箱中仅验证了纯逻辑单测 + 构建通过；Electron GUI、全局快捷键、托盘、粘贴、打包需在有显示器/网络的真机运行确认。
-- [ ] **electron-updater 需配置**：`updater.ts` 已实现检查逻辑，但需在 `electron-builder.yml` 配 `publish`（如 GitHub Releases）才能真下载更新。
-- [ ] 复制/粘贴快捷键默认 `Cmd/Ctrl+C` 复制选中项；面板唤起快捷键默认（详见 settings.ts 默认值），可在设置页改。
-- [ ] **UI 当前状态**：采用原生蓝色主调（accent `#2f6df6` / 深色 `#4c8dff`）的简洁风格，**曾尝试过紫色美化版（#7c3aed）但用户要求回滚**。若后续要做视觉升级，请先与用户确认是否要紫色方案，不要自行切换主色。
+- ✅ **图标已生成**：`assets/icon.png`（1024² 「白纸浮于绿」剪贴板，薄荷绿 `#34d399`→翠绿 `#059669` 对角渐变，由 `scripts/gen_icon.py` 生成）、`icon.icns`（iconutil 转换多尺寸）、`assets/logo.png`（透明底品牌标识）；托盘图标复用 `icon.png` 缩放 22px。无需再补。
+- [ ] **粘贴功能依赖系统权限**：macOS 需「系统设置 → 隐私与安全 → 辅助功能」授权给应用；当前用 `osascript` 模拟 Cmd+V。未授权时粘贴静默失败，复制正常。
+- ✅ **已在真机验证 GUI**：用户已安装 dmg 实测——菜单栏托盘图标可见、点击弹菜单（打开面板/偏好设置/退出）、独立偏好设置窗口样式与值同步、面板设置均已验证。剩余如 Windows 版打包、粘贴辅助功能授权仍建议真机确认。
+- ✅ **electron-updater 已配置并发版**：`electron-builder.yml` 已加 `publish: github`（owner hyojooo / repo Shelf），已发布 v1.0.0 Release（`latest-mac.yml` + 两个 dmg）。后续发版跑 `npm run publish` 即触发自动更新检测。
+- [ ] 复制/粘贴快捷键默认 `Cmd/Ctrl+C` 复制选中项；面板唤起快捷键默认 `CommandOrControl+Shift+V`，可在设置页改。
+- [ ] **UI 当前状态**：界面采用清新绿主调 —— accent 浅色 `#059669` / 深色 `#34d399`（CSS 变量 `--accent` / `--accent-soft`，定义在 `src/renderer/styles/global.css` 顶部 `:root` 与 `:root[data-theme='dark']`）。该配色与 app 图标（薄荷绿 `#34d399` → 翠绿 `#059669` 渐变）统一，由用户 2026-08-09 明确要求从蓝(`#2f6df6`)切换而来。注意：菜单栏托盘图标沿用 `assets/icon.png` 缩放，同为绿色，与界面主色一致。近期 UI 增量：关闭右侧预览时左侧选中态同步取消（视觉一致）、右侧空白区显示浮动小熊 SVG 空状态、预览文本支持鼠标部分选中复制（`.preview-text` 覆写 `user-select:text`）。
 - [ ] **新增「收藏」入口已上线**：列表项 hover 出 ★ 可收藏，标签页新增「收藏」统一查看；收藏项在「全部」标签中置顶。
+- [ ] **代码未提交 git**：截至 2026-08-08 所有改动（菜单栏托盘、独立偏好设置窗口等）仍在 working tree，未 `git commit`。发布/交接前建议先 commit 一次以保留源码与包一致。
 
 ---
 
@@ -155,10 +168,13 @@ npm run dist:win  # 打包 Windows nsis
 
 启动：`cd <项目根> && npm run dev`。应用**启动即隐藏**（macOS 隐藏 Dock 图标、窗口不自动弹出）。
 
-**打开面板的 3 种方式**：
+**打开面板 / 使用菜单栏托盘**：
 1. 默认全局快捷键 **`Cmd+Shift+V`**（settings 中 `globalShortcut` 默认值 `CommandOrControl+Shift+V`，可在设置页修改并持久化）。该快捷键为**切换（toggle）语义**：面板隐藏时唤起，面板可见时再按则关闭。
-2. 点击菜单栏托盘图标（当前为 1×1 透明 PNG 占位，可能看不见但仍可点）
-3. 右键托盘 →「打开面板」
+2. 点击**菜单栏托盘图标**（绿色剪贴板，已可见）→ 弹出菜单：
+   - **打开面板** —— 唤起主面板（居中或跟随光标）
+   - **偏好设置** —— 打开一个独立的偏好设置窗口（与主面板内「设置」内容完全一致，右上角 ✕ 可单独关闭，不影响主面板）
+   - **退出** —— 直接退出 app
+   - 左键 / 右键点击均弹出此菜单。
 
 **面板弹出位置**：默认 **屏幕居中**（`settings.panelPosition='center'`）。可在设置页「面板位置」分组切到「跟随光标」。该设置即时持久化，下次唤起生效。
 

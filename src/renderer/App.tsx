@@ -202,7 +202,39 @@ export default function App() {
           )}
         </main>
 
-        {previewId && <Preview id={previewId} onClose={() => preview(null)} />}
+        <div className="preview-area">
+          {previewId ? (
+            <Preview id={previewId} onClose={() => { preview(null); select(null) }} />
+          ) : (
+            <div className="preview-empty">
+              <svg className="bear" width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* 耳朵 */}
+                <circle cx="22" cy="26" r="12" fill="var(--muted)" opacity=".2"/>
+                <circle cx="22" cy="26" r="7" fill="var(--muted)" opacity=".15"/>
+                <circle cx="74" cy="26" r="12" fill="var(--muted)" opacity=".2"/>
+                <circle cx="74" cy="26" r="7" fill="var(--muted)" opacity=".15"/>
+                {/* 脸 */}
+                <ellipse cx="48" cy="56" rx="34" ry="30" fill="var(--muted)" opacity=".1"/>
+                {/* 口鼻 */}
+                <ellipse cx="48" cy="62" rx="16" ry="12" fill="var(--muted)" opacity=".12"/>
+                {/* 鼻子 */}
+                <ellipse cx="48" cy="58" rx="5" ry="3.5" fill="var(--muted)" opacity=".25"/>
+                {/* 眼睛 */}
+                <circle cx="36" cy="50" r="4" fill="var(--muted)" opacity=".35"/>
+                <circle cx="60" cy="50" r="4" fill="var(--muted)" opacity=".35"/>
+                {/* 眼睛高光 */}
+                <circle cx="37.5" cy="48.5" r="1.3" fill="#fff" opacity=".6"/>
+                <circle cx="61.5" cy="48.5" r="1.3" fill="#fff" opacity=".6"/>
+                {/* 嘴巴 — 微笑弧线 */}
+                <path d="M42 66 Q48 72 54 66" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity=".3"/>
+                {/* 腮红 */}
+                <ellipse cx="28" cy="58" rx="6" ry="4" fill="var(--accent)" opacity=".12"/>
+                <ellipse cx="68" cy="58" rx="6" ry="4" fill="var(--accent)" opacity=".12"/>
+              </svg>
+              <p className="preview-empty__text">选择一条记录查看详情</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}

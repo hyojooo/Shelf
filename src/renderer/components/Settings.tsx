@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
 import { getClip } from '../clip-api'
 import type { Settings as SettingsType, ThemeMode, PanelPosition } from '../../shared/types'
@@ -93,14 +93,21 @@ function Section({
   )
 }
 
-// ── 设置页主体 ──
-export default function Settings({ onClose }: { onClose: () => void }) {
+// ── 设置表单主体（面板弹窗 / 独立偏好窗口共用）──
+export function SettingsForm({ onClose }: { onClose: () => void }) {
   const settings = useStore((s) => s.settings)
   const setSettings = useStore((s) => s.setSettings)
   const [draft, setDraft] = useState<SettingsType>(
     settings ? { ...settings } : ({} as SettingsType)
   )
   const [capturing, setCapturing] = useState(false)
+
+  // 当外部 settings 异步加载到达时，同步 draft（偏好窗口首次打开时 settings 可能还没就绪）
+  useEffect(() => {
+    if (settings && Object.keys(settings).length > 0) {
+      setDraft({ ...settings })
+    }
+  }, [settings])
 
   if (!settings) return null
 
@@ -149,9 +156,8 @@ export default function Settings({ onClose }: { onClose: () => void }) {
   ]
 
   return (
-    <div className="modal-mask" onClick={onClose}>
-      <div className="modal modal-settings" onClick={(e) => e.stopPropagation()}>
-        {/* 头部 */}
+    <div className="modal modal-settings" onClick={(e) => e.stopPropagation()}>
+      {/* 头部 */}
         <div className="modal-head">
           <h2>设置</h2>
           <button className="icon-btn" onClick={onClose} title="关闭">
@@ -289,6 +295,14 @@ export default function Settings({ onClose }: { onClose: () => void }) {
           </Section>
         </div>
       </div>
+  )
+}
+
+// ── 面板内弹窗包装（带遮罩，点击遮罩关闭）──
+export default function Settings({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-mask" onClick={onClose}>
+      <SettingsForm onClose={onClose} />
     </div>
   )
 }

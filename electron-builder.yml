@@ -11,6 +11,16 @@ files:
   - out/**/*
   - package.json
 
+# 托盘菜单栏图标 + app 图标：运行时由主进程读取，需作为额外资源拷贝进 app
+# 生产环境路径：<应用>/Contents/Resources/assets/
+extraResources:
+  - from: assets/icon.png
+    to: assets/icon.png
+  - from: assets/tray.png
+    to: assets/tray.png
+  - from: assets/tray@2x.png
+    to: assets/tray@2x.png
+
 # macOS 打包配置（最低 10.15 Catalina）
 mac:
   category: public.app-category.utilities
