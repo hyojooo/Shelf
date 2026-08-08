@@ -25,23 +25,24 @@ extraResources:
 mac:
   category: public.app-category.utilities
   minimumSystemVersion: '10.15'
-  identity: null  # 显式禁用代码签名（国内 Apple 时间戳服务器不可达，空字符串""会被当成自动检测而非禁用）
+  identity: null # 显式禁用代码签名（国内 Apple 时间戳服务器不可达，空字符串""会被当成自动检测而非禁用）
   forceCodeSigning: false
   target:
     - target: dmg
       arch:
         - x64
         - arm64
-  icon: assets/icon.icns   # 由 scripts/gen_icon.py 生成（含多尺寸）
+  icon: assets/icon.icns # 由 scripts/gen_icon.py 生成（含多尺寸）
 
 # Windows 打包配置（最低 Windows 10）
+# nsis 目标：生成标准安装包（含开始菜单/卸载入口）
+# 注意：在 macOS 上打包 nsis 需要 wine（Homebrew 的 wine-stable 已标记 deprecated，预计 2026-09-01 下架）
 win:
   target:
     - target: nsis
       arch:
         - x64
-  icon: assets/icon.png   # 由 scripts/gen_icon.py 生成（1024²）
-
+  icon: assets/icon.png # 由 scripts/gen_icon.py 生成（1024²）
 nsis:
   oneClick: false
   perMachine: false

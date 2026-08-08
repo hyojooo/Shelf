@@ -13,7 +13,7 @@
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
-    "publish": "npm run build && electron-builder --publish=always",
+    "publish": "npm run build && electron-builder --mac --win --publish=always",
     "test": "node --experimental-strip-types tests/logic.test.ts"
   },
   "dependencies": {
