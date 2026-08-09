@@ -88,9 +88,9 @@ export class ClipStore {
   async addText(text: string, hash: string, now: number, size: number): Promise<{ added: boolean }> {
     const existing = this.clips.find((c) => c.type === 'text' && c.hash === hash)
     if (existing) {
+      // 命中重复项：仅刷新时间戳并落盘，不广播给渲染进程（避免无效 IPC 放大重渲染）
       existing.updatedAt = now
       this.scheduleSave()
-      this.emit()
       return { added: false }
     }
     const firstLine = text.split('\n')[0] ?? ''
@@ -114,9 +114,9 @@ export class ClipStore {
   async addImage(input: AddImageInput, now: number): Promise<{ added: boolean }> {
     const existing = this.clips.find((c) => c.type === 'image' && c.hash === input.hash)
     if (existing) {
+      // 命中重复项：仅刷新时间戳并落盘，不广播给渲染进程（避免无效 IPC 放大重渲染）
       existing.updatedAt = now
       this.scheduleSave()
-      this.emit()
       return { added: false }
     }
     const id = makeId(input.hash, now)

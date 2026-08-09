@@ -33,8 +33,8 @@ clipboard-manager/
 │   ├── main/                 # 主进程（Node/Electron 环境）
 │   │   ├── index.ts          # 入口：装配 + IPC handler；全局快捷键回调用 toggle()（隐显切换）；PASTE 用「hide()先行→60ms延时→写剪贴板→Cmd+V」解决失焦
 │   │   ├── window.ts         # 面板窗口：置顶/失焦隐藏/可拖拽顶栏；showPanel(position) 支持 cursor（跟随光标）与 center（屏幕居中，默认）；captureSourceApp/getSourceApp
-│   │   ├── clipboard.ts      # 剪切板监听 + 捕获（含抑制回环 suppressNextCapture）
-│   │   ├── store.ts          # 内存存储 + JSON 原子持久化 + 图片压缩存盘
+│   │   ├── clipboard.ts      # 剪切板监听 + 捕获（含抑制回环 suppressNextCapture）；750ms 轮询 + 廉价前置检测（文本比长度+前缀、图片比尺寸）后再做昂贵 toJPEG/哈希
+│   │   ├── store.ts          # 内存存储 + JSON 原子持久化 + 图片压缩存盘；addText/addImage 命中重复项时仅刷时间戳+落盘、不再 emit（避免无效 IPC 放大渲染重渲染）
 │   │   ├── settings.ts       # 设置读写（maxItems/cleanupBatch 等）
 │   │   ├── tray.ts           # 菜单栏托盘：点击弹出菜单（打开面板/偏好设置/退出）；图标 assets/icon.png 缩放 22px
 │   │   ├── preferences.ts    # 独立偏好设置窗口（frameless 单实例，复用 SettingsForm，✕ 关闭）
@@ -44,7 +44,7 @@ clipboard-manager/
 │   ├── preload/
 │   │   └── index.ts          # contextBridge 暴露 window.clip API（导出类型 ClipApi）
 │   └── renderer/             # React 渲染进程
-│       ├── App.tsx           # 根组件：键盘导航、事件订阅、主题
+│       ├── App.tsx           # 根组件：键盘导航、事件订阅（mount 一次性注册）、主题；getAll 仅在 mount 拉取一次，之后靠 IPC.UPDATED 推送；VISIBILITY handler 用 filteredRef 读最新列表
 │       ├── clip-api.ts       # 【关键】安全访问 window.clip 的包装层 getClip()
 │       ├── main.tsx          # React 挂载入口
 │       ├── index.html
@@ -129,6 +129,10 @@ clipboard-manager/
 | **白色托盘图标致 app 启动失败** | 把托盘图标换成白色 tray.png + `setTemplateImage(true)` 后 app 起不来 | 已回滚到用 `assets/icon.png` 缩放 22px（紫色）。白色图标需排查 `setTemplateImage`/`addRepresentation` 在当前 Electron 版本的行为，不要简单替换图片。 |
 | **关闭预览左侧仍选中** | 点预览 ✕ 关掉右侧后，左侧列表项还是绿色高亮 | 根因：Preview 的 `onClose` 只 `preview(null)` 没清选中。修复：`onClose={() => { preview(null); select(null) }}`。其它关闭路径（面板隐藏/Esc）本就带 `select(null)`，仅此一处漏过。 |
 | **预览文本无法鼠标选中** | 右侧详情文本拖动鼠标选不中 | 根因：`body { user-select:none }` 全局禁选（防拖拽列表误选），未给预览区恢复。修复：`.preview-text` 加 `user-select:text` 覆盖。注意：不要用 `user-select:auto`（部分引擎下仍受限），用 `text` 才稳。 |
+| **渲染进程 CPU 192% 死循环** | Activity Monitor 里 `Shelf Helper (Renderer)` 占 ~192% CPU、累计数小时不降 | 根因：`App.tsx` 初始化 `useEffect` 的依赖数组含 `filtered`（`useMemo` 派生值），而 effect 内部又调 `clip.getAll().then(setClips)` → `clips` 变 → `filtered` 变 → effect 重跑 → 无限重渲染风暴（与剪贴板是否变化无关，开机即跑）。修复：拆成两个 mount-only effect（`getAll()` 初始化一次 + IPC 订阅一次），**依赖数组移除 `filtered`**；VISIBILITY handler 改用 `filteredRef` 读最新列表。**教训：派生值（useMemo 结果）绝不能进 effect 依赖，否则极易形成自持续循环。** |
+| **主进程 CPU 33% 轮询烧** | `Shelf` 主进程稳定 ~33% CPU | 根因：`clipboard.ts` 每 500ms 轮询，且**在判重之前**就无条件执行最贵操作——图片每轮 `toJPEG(80)` 全分辨率重编码 + SHA-256，文本每轮全量 `readText`+哈希；剪贴板放着截图时每 500ms 烧一次。修复：加「廉价前置检测门」——文本比 `length`+前 120 字符、图片比 `getSize()` 尺寸，**确认可能变了才做 toJPEG/哈希**；轮询间隔 500ms→750ms。空闲时（剪贴板内容不变）几乎零成本。 |
+| **重复项无效广播** | 剪贴板内容不变时主进程仍每轮向渲染进程推送整表（含 base64 缩略图），放大渲染重渲染 | 根因：`store.ts` 的 `addText`/`addImage` 命中已存在项时仍 `this.emit()`。修复：重复项仅刷新 `updatedAt` + `scheduleSave()`，不再 `emit()`。 |
+| **Enter 键粘贴/复制失效（已修）** | 面板内选中条目按 Enter 应粘贴/复制，但无反应（可能抛 `clip.paste is not a function`） | 根因：`App.tsx` 的 `onKey` 里 `const clip = filtered.find(...)` 把外层 `clip`（ClipApi）变量**遮蔽**成本地 `Clip` 数据对象，后续 `clip.paste(selectedId)` 调的是数据对象而非 API，类型/运行均错。修复：局部变量改名为 `hit`，`clip.paste/copy` 走外层 ClipApi（2026-08-09 补修）。双击中键 `handleDouble` 用的是外层 `clip`，一直正常。 |
 
 ---
 
@@ -156,7 +160,8 @@ npm run dist:win  # 打包 Windows nsis
 - ✅ **图标已生成**：`assets/icon.png`（1024² 「白纸浮于绿」剪贴板，薄荷绿 `#34d399`→翠绿 `#059669` 对角渐变，由 `scripts/gen_icon.py` 生成）、`icon.icns`（iconutil 转换多尺寸）、`assets/logo.png`（透明底品牌标识）；托盘图标复用 `icon.png` 缩放 22px。无需再补。
 - [ ] **粘贴功能依赖系统权限**：macOS 需「系统设置 → 隐私与安全 → 辅助功能」授权给应用；当前用 `osascript` 模拟 Cmd+V。未授权时粘贴静默失败，复制正常。
 - ✅ **已在真机验证 GUI**：用户已安装 dmg 实测——菜单栏托盘图标可见、点击弹菜单（打开面板/偏好设置/退出）、独立偏好设置窗口样式与值同步、面板设置均已验证。剩余如 Windows 版打包、粘贴辅助功能授权仍建议真机确认。
-- ✅ **electron-updater 已配置并发版**：`electron-builder.yml` 已加 `publish: github`（owner hyojooo / repo Shelf），已发布 v1.0.0 Release（`latest-mac.yml` + 两个 dmg）。后续发版跑 `npm run publish` 即触发自动更新检测。
+- ✅ **electron-updater 已配置并发版**：`electron-builder.yml` 已加 `publish: github`（owner hyojooo / repo Shelf），已发布 v1.0.0 Release（`latest-mac.yml` + 两个 dmg）。后续发版跑 `npm run publish` 即触发自动更新检测。**注意 `publish` 脚本已加 `--mac --win`**（原先漏写平台参数，导致只打 macOS 包；Windows 包需要 wine，Homebrew 的 `wine-stable` 已标 deprecated，预计 2026-09-01 下架）。
+- ✅ **CPU 占用已修复（2026-08-09）**：渲染进程 192% 无限重渲染循环（`App.tsx` effect 依赖含 `filtered`）+ 主进程 33% 轮询烧（`clipboard.ts` 判重前做贵操作）已修复。修复后空闲时各进程 CPU 应趋近 0%。详见第 5 节「渲染进程 CPU 192% 死循环」「主进程 CPU 33% 轮询烧」「重复项无效广播」三条。
 - [ ] 复制/粘贴快捷键默认 `Cmd/Ctrl+C` 复制选中项；面板唤起快捷键默认 `CommandOrControl+Shift+V`，可在设置页改。
 - [ ] **UI 当前状态**：界面采用清新绿主调 —— accent 浅色 `#059669` / 深色 `#34d399`（CSS 变量 `--accent` / `--accent-soft`，定义在 `src/renderer/styles/global.css` 顶部 `:root` 与 `:root[data-theme='dark']`）。该配色与 app 图标（薄荷绿 `#34d399` → 翠绿 `#059669` 渐变）统一，由用户 2026-08-09 明确要求从蓝(`#2f6df6`)切换而来。注意：菜单栏托盘图标沿用 `assets/icon.png` 缩放，同为绿色，与界面主色一致。近期 UI 增量：关闭右侧预览时左侧选中态同步取消（视觉一致）、右侧空白区显示浮动小熊 SVG 空状态、预览文本支持鼠标部分选中复制（`.preview-text` 覆写 `user-select:text`）。
 - [ ] **新增「收藏」入口已上线**：列表项 hover 出 ★ 可收藏，标签页新增「收藏」统一查看；收藏项在「全部」标签中置顶。
@@ -179,7 +184,7 @@ npm run dist:win  # 打包 Windows nsis
 **面板弹出位置**：默认 **屏幕居中**（`settings.panelPosition='center'`）。可在设置页「面板位置」分组切到「跟随光标」。该设置即时持久化，下次唤起生效。
 
 **逐项验证**：见第 4 节功能表，逐项对照即可。核心提示：
-- 剪切板每 **500ms 轮询**一次（`clipboard.ts`），复制后约半秒面板更新，无需切窗口。
+- 剪切板每 **750ms 轮询**一次（`clipboard.ts`），复制后约 0.75 秒面板更新，无需切窗口。空闲时（剪贴板内容不变）因「廉价前置检测」几乎零 CPU 开销。
 - **面板打开即默认预览第一条**（单击列表项可切换预览；单击=预览，双击=粘贴）。
 - **粘贴会自动隐藏面板**（双击/回车/预览「粘贴」按钮触发 `hide()` 先行，焦点归还源应用后再发 Cmd+V）。macOS 需「系统设置 → 隐私与安全性 → 辅助功能」授权给应用；未授权时粘贴静默失败，但复制（写回剪切板）正常。
 - **面板可拖拽**：从顶栏（标签页四周留白区域）按住拖动即可移动窗口。

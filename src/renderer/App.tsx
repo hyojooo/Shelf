@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react'
+import { useEffect, useMemo, useCallback, useRef } from 'react'
 import { useStore } from './store/useStore'
 import { filterClips } from '../shared/search'
 import { IPC, type Clip, type Settings as SettingsType } from '../shared/types'
@@ -57,6 +57,10 @@ export default function App() {
     })
   }, [clips, tab, query])
 
+  // 始终持有最新 filtered，供一次性订阅的 VISIBILITY handler 安全读取（避免把 filtered 放进 effect 依赖形成无限循环）
+  const filteredRef = useRef(filtered)
+  filteredRef.current = filtered
+
   // 主题：跟随系统 / 浅色 / 深色
   useEffect(() => {
     const apply = () => {
@@ -71,10 +75,14 @@ export default function App() {
     return () => mq.removeEventListener('change', apply)
   }, [settings])
 
-  // 初始化数据 + 订阅主进程事件
+  // 初始化数据：仅 mount 时拉取一次，之后靠主进程 IPC.UPDATED 事件推送更新
   useEffect(() => {
     void clip.getAll().then(setClips)
     void clip.getSettings().then(setSettings)
+  }, [setClips, setSettings])
+
+  // 订阅主进程事件：mount 时注册一次，依赖全部为稳定的 store action，故空依赖不重订阅
+  useEffect(() => {
     const offs = [
       clip.on(IPC.UPDATED, (c: Clip[]) => setClips(c)),
       clip.on(IPC.SETTINGS_UPDATED, (s) => setSettings(s as SettingsType)),
@@ -84,8 +92,8 @@ export default function App() {
           select(null)
           preview(null)
         } else {
-          // 面板打开时默认选中并预览第一条
-          const first = filtered[0]
+          // 面板打开时默认选中并预览第一条（读 ref 中的最新列表，避免依赖 filtered）
+          const first = filteredRef.current[0]
           if (first) {
             select(first.id)
             preview(first.id)
@@ -102,7 +110,7 @@ export default function App() {
       })
     ]
     return () => offs.forEach((off) => off())
-  }, [setClips, setSettings, setSettingsOpen, select, preview, setUpdate, filtered])
+  }, [setClips, setSettings, setSettingsOpen, select, preview, setUpdate])
 
   // 键盘导航（功能 4）：上下选择、回车粘贴/复制、Cmd/Ctrl+C 复制、Delete 删除、Esc 关闭
   const onKey = useCallback(
@@ -148,8 +156,9 @@ export default function App() {
         return
       }
       if (e.key === 'Enter' && selectedId) {
-        const clip = filtered.find((c) => c.id === selectedId)
-        if (!clip) return
+        const hit = filtered.find((c) => c.id === selectedId)
+        if (!hit) return
+        // 注意：此处必须用外层 clip(ClipApi)，不得遮蔽为本地 Clip 数据对象（否则 paste/copy 失效）
         if (settings?.pasteOnDoubleClick) void clip.paste(selectedId)
         else void clip.copy(selectedId)
       }
