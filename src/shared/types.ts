@@ -82,6 +82,7 @@ export const IPC = {
   GET_SETTINGS: 'settings:get',
   UPDATE_SETTINGS: 'settings:update',
   CHECK_UPDATE: 'updater:check',
+  GET_VERSION: 'app:get-version',
   QUIT: 'app:quit',
   // 主进程 -> 渲染进程（send / on）
   UPDATED: 'clip:updated',

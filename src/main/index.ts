@@ -7,9 +7,9 @@ import { ClipStore } from './store'
 import { startClipboardMonitor, suppressNextCapture } from './clipboard'
 import { createPanelWindow, toggle, hide, getWindow, isVisible, getSourceApp, showPanel } from './window'
 import { createTray } from './tray'
-import { openPreferencesWindow } from './preferences'
+import { openPreferencesWindow, getPreferencesWindow } from './preferences'
 import { registerShortcut, unregister, unregisterAll } from './shortcut'
-import { setupUpdater, checkForUpdates, quitAndInstall } from './updater'
+import { setupUpdater, checkForUpdates, quitAndInstall, registerUpdateWindow } from './updater'
 
 installCrashHandlers()
 
@@ -75,6 +75,8 @@ async function bootstrap(): Promise<void> {
 
   createPanelWindow()
   setupUpdater(getWindow)
+  // 偏好设置窗口也接收更新状态广播（点"检查"时弹窗才能显示）
+  registerUpdateWindow(getPreferencesWindow)
   createTray({ show: () => showPanel(getSettings().panelPosition), openPreferences: openSettings, quit: () => app.quit() })
 
   applyShortcut(settings.globalShortcut)
@@ -137,7 +139,8 @@ async function bootstrap(): Promise<void> {
     return next
   })
 
-  ipcMain.handle(IPC.CHECK_UPDATE, () => checkForUpdates())
+  ipcMain.handle(IPC.CHECK_UPDATE, () => checkForUpdates(getWindow))
+  ipcMain.handle(IPC.GET_VERSION, () => app.getVersion())
   ipcMain.handle(IPC.QUIT, () => {
     app.quit()
     return true

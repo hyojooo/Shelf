@@ -94,13 +94,14 @@ function Section({
 }
 
 // ── 设置表单主体（面板弹窗 / 独立偏好窗口共用）──
-export function SettingsForm({ onClose }: { onClose: () => void }) {
+export function SettingsForm({ onClose, title }: { onClose: () => void; title?: string }) {
   const settings = useStore((s) => s.settings)
   const setSettings = useStore((s) => s.setSettings)
   const [draft, setDraft] = useState<SettingsType>(
     settings ? { ...settings } : ({} as SettingsType)
   )
   const [capturing, setCapturing] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
 
   // 当外部 settings 异步加载到达时，同步 draft（偏好窗口首次打开时 settings 可能还没就绪）
   useEffect(() => {
@@ -108,6 +109,11 @@ export function SettingsForm({ onClose }: { onClose: () => void }) {
       setDraft({ ...settings })
     }
   }, [settings])
+
+  // 获取应用真实版本号（主进程 app.getVersion()，替代运行时为 undefined 的 process.env.npm_package_version）
+  useEffect(() => {
+    void getClip().getVersion().then(setAppVersion)
+  }, [])
 
   if (!settings) return null
 
@@ -159,7 +165,7 @@ export function SettingsForm({ onClose }: { onClose: () => void }) {
     <div className="modal modal-settings" onClick={(e) => e.stopPropagation()}>
       {/* 头部 */}
         <div className="modal-head">
-          <h2>设置</h2>
+          <h2>{title ?? '设置'}</h2>
           <button className="icon-btn" onClick={onClose} title="关闭">
             ✕
           </button>
@@ -286,7 +292,7 @@ export function SettingsForm({ onClose }: { onClose: () => void }) {
             <div className="s-field-row">
               <div className="s-info">
                 <span className="s-label">检查更新</span>
-                <span className="s-desc">Shelf v{process.env.npm_package_version ?? '1.0.0'}</span>
+                <span className="s-desc">{appVersion ? `Shelf v${appVersion}` : 'Shelf v—'}</span>
               </div>
               <button className="s-btn" onClick={() => void getClip().checkUpdate()}>
                 检查

@@ -64,3 +64,8 @@ export function openPreferencesWindow(): void {
 export function isPreferencesOpen(): boolean {
   return !!prefWin && !prefWin.isDestroyed()
 }
+
+/** 供更新模块获取偏好窗口引用（用于广播 UPDATE_STATE） */
+export function getPreferencesWindow(): BrowserWindow | null {
+  return prefWin && !prefWin.isDestroyed() ? prefWin : null
+}

@@ -31,25 +31,25 @@ clipboard-manager/
 │   │   ├── search.ts         # 模糊搜索（子序列打分 + 图片时间戳匹配）；filterClips 支持 favorite 分支仅显示收藏
 │   │   └── cleanup.ts        # 超量清理策略（收藏豁免、最旧 N 条）
 │   ├── main/                 # 主进程（Node/Electron 环境）
-│   │   ├── index.ts          # 入口：装配 + IPC handler；全局快捷键回调用 toggle()（隐显切换）；PASTE 用「hide()先行→60ms延时→写剪贴板→Cmd+V」解决失焦
+│   │   ├── index.ts          # 入口：装配 + IPC handler（含 GET_VERSION、CHECK_UPDATE）；registerUpdateWindow 把偏好窗口纳入更新广播；全局快捷键回调用 toggle()（隐显切换）；PASTE 用「hide()先行→60ms延时→写剪贴板→Cmd+V」解决失焦
 │   │   ├── window.ts         # 面板窗口：置顶/失焦隐藏/可拖拽顶栏；showPanel(position) 支持 cursor（跟随光标）与 center（屏幕居中，默认）；captureSourceApp/getSourceApp
 │   │   ├── clipboard.ts      # 剪切板监听 + 捕获（含抑制回环 suppressNextCapture）；750ms 轮询 + 廉价前置检测（文本比长度+前缀、图片比尺寸）后再做昂贵 toJPEG/哈希
 │   │   ├── store.ts          # 内存存储 + JSON 原子持久化 + 图片压缩存盘；addText/addImage 命中重复项时仅刷时间戳+落盘、不再 emit（避免无效 IPC 放大渲染重渲染）
 │   │   ├── settings.ts       # 设置读写（maxItems/cleanupBatch 等）
 │   │   ├── tray.ts           # 菜单栏托盘：点击弹出菜单（打开面板/偏好设置/退出）；图标 assets/icon.png 缩放 22px
-│   │   ├── preferences.ts    # 独立偏好设置窗口（frameless 单实例，复用 SettingsForm，✕ 关闭）
+│   │   ├── preferences.ts    # 独立偏好设置窗口（frameless 单实例，复用 SettingsForm，✕ 关闭）；导出 getPreferencesWindow() 供更新模块广播
 │   │   ├── shortcut.ts       # globalShortcut 注册/注销
-│   │   ├── updater.ts        # electron-updater 更新检查
+│   │   ├── updater.ts        # electron-updater 更新检查 + 多窗口广播（registerUpdateWindow）；checkForUpdates 失败经 IPC 推 error 状态
 │   │   └── logger.ts         # 全局异常/崩溃日志 → userData/logs/
 │   ├── preload/
 │   │   └── index.ts          # contextBridge 暴露 window.clip API（导出类型 ClipApi）
 │   └── renderer/             # React 渲染进程
-│       ├── App.tsx           # 根组件：键盘导航、事件订阅（mount 一次性注册）、主题；getAll 仅在 mount 拉取一次，之后靠 IPC.UPDATED 推送；VISIBILITY handler 用 filteredRef 读最新列表
+│       ├── App.tsx           # 根组件：键盘导航、事件订阅（mount 一次性注册）、主题；getAll 仅在 mount 拉取一次，之后靠 IPC.UPDATED 推送；VISIBILITY handler 用 filteredRef 读最新列表；内嵌 UpdateModal 弹窗（available/downloaded/error/not-available 四态）
 │       ├── clip-api.ts       # 【关键】安全访问 window.clip 的包装层 getClip()
 │       ├── main.tsx          # React 挂载入口
 │       ├── index.html
 │       ├── preferences.html  # 独立偏好设置窗口 HTML 入口（electron-vite 多入口）
-│       ├── preferences.tsx   # 独立偏好设置窗口：挂载 SettingsForm，✕ 关闭（window.close）
+│       ├── preferences.tsx  # 独立偏好设置窗口：挂载 SettingsForm（title="偏好设置"）；订阅 UPDATE_STATE + 内嵌 UpdateModal（与面板同步）；✕ 关闭（window.close）
 │       ├── store/useStore.ts # zustand 状态管理
 │       ├── components/
 │       │   ├── Tabs.tsx          # 全部/文本/图片/收藏 分类标签（收藏带 SVG 星标）
@@ -57,7 +57,7 @@ clipboard-manager/
 │       │   ├── ClipList.tsx      # 列表容器（接入虚拟滚动）；收藏星标/删除 X 为 SVG
 │       │   ├── VirtualList.tsx   # 自研虚拟滚动
 │       │   ├── Preview.tsx       # 单击预览（右侧固定列，非浮层抽屉）；关闭按钮 SVG
-│       │   └── Settings.tsx      # 设置页：拆出可复用 SettingsForm（无遮罩）；Settings 为面板弹窗包装
+│       │   └── Settings.tsx      # 设置页：拆出可复用 SettingsForm（接收可选 title prop、无遮罩）；Settings 为面板弹窗包装
 │       └── styles/global.css  # CSS 变量深/浅色适配 + 动画 + 偏好窗口 .pref-root
 └── tests/
     └── logic.test.ts         # 纯逻辑单测（去重/搜索/清理，17 用例）
@@ -128,11 +128,19 @@ clipboard-manager/
 | **收藏没有统一入口** | 收藏的条目散落在「全部」里，找不到在哪看 | `ClipTab` 增加 `'favorite'` → `filterClips` 加 favorite 分支 → `Tabs.tsx` 加第四个「收藏」标签（SVG 星标）；注意 `types.ts`（shared）与 `search.ts` 两处 `ClipTab` 类型都要同步加 |
 | **白色托盘图标致 app 启动失败** | 把托盘图标换成白色 tray.png + `setTemplateImage(true)` 后 app 起不来 | 已回滚到用 `assets/icon.png` 缩放 22px（紫色）。白色图标需排查 `setTemplateImage`/`addRepresentation` 在当前 Electron 版本的行为，不要简单替换图片。 |
 | **关闭预览左侧仍选中** | 点预览 ✕ 关掉右侧后，左侧列表项还是绿色高亮 | 根因：Preview 的 `onClose` 只 `preview(null)` 没清选中。修复：`onClose={() => { preview(null); select(null) }}`。其它关闭路径（面板隐藏/Esc）本就带 `select(null)`，仅此一处漏过。 |
+| **更新检查"无反应"（已修 2026-08-09）** | 设置面板点"检查"后界面无任何变化 | 根因：主进程 `autoUpdater` 正常检测到新版本并通过 IPC 通知渲染进程，`App.tsx` 也正确将 `updateInfo`/`updateStatus` 写入 zustand store——但**全项目没有任何组件读取这两个字段来渲染 UI**。store 有数据，UI 不消费 → 用户看到一片寂静。修复：在 `App.tsx` 内嵌 UpdateModal 组件（读 `updateStatus` 渲染 available/downloaded/error 三态弹窗 + not-available 底部轻提示）。 |
+| **更新错误被静默吞掉（已修 2026-08-09）** | 网络不通 / GitHub API 限流时点"检查"同样无反应 | 根因：① `updater.ts` 的 `checkForUpdates()` catch 块只 `logError()` 返回 null，不通知渲染进程；② `App.tsx` 的 `UPDATE_STATE` 监听缺少 `error`/`progress` 分支。修复：catch 里通过 `getWindow().webContents.send(UPDATE_STATE, {status:'error'})` 推送；渲染端补全 error→红色提示弹窗、progress→保留当前 info。 |
+| **版本号恒显示 v1.0.0（已修 2026-08-09）** | 设置面板"关于"区域永远显示 Shelf v1.0.0，与实际版本无关 | 根因：用 `process.env.npm_package_version` 显示版本，该变量仅在 `npm run xxx` 构建时由 electron-vite 注入，**打包后的 Electron 运行时为 undefined**，始终回退到 `'1.0.0'`。修复：新增 IPC 通道 `GET_VERSION`（主进程 `app.getVersion()`），Settings 组件 mount 时异步拉取真实版本号。 |
 | **预览文本无法鼠标选中** | 右侧详情文本拖动鼠标选不中 | 根因：`body { user-select:none }` 全局禁选（防拖拽列表误选），未给预览区恢复。修复：`.preview-text` 加 `user-select:text` 覆盖。注意：不要用 `user-select:auto`（部分引擎下仍受限），用 `text` 才稳。 |
 | **渲染进程 CPU 192% 死循环** | Activity Monitor 里 `Shelf Helper (Renderer)` 占 ~192% CPU、累计数小时不降 | 根因：`App.tsx` 初始化 `useEffect` 的依赖数组含 `filtered`（`useMemo` 派生值），而 effect 内部又调 `clip.getAll().then(setClips)` → `clips` 变 → `filtered` 变 → effect 重跑 → 无限重渲染风暴（与剪贴板是否变化无关，开机即跑）。修复：拆成两个 mount-only effect（`getAll()` 初始化一次 + IPC 订阅一次），**依赖数组移除 `filtered`**；VISIBILITY handler 改用 `filteredRef` 读最新列表。**教训：派生值（useMemo 结果）绝不能进 effect 依赖，否则极易形成自持续循环。** |
 | **主进程 CPU 33% 轮询烧** | `Shelf` 主进程稳定 ~33% CPU | 根因：`clipboard.ts` 每 500ms 轮询，且**在判重之前**就无条件执行最贵操作——图片每轮 `toJPEG(80)` 全分辨率重编码 + SHA-256，文本每轮全量 `readText`+哈希；剪贴板放着截图时每 500ms 烧一次。修复：加「廉价前置检测门」——文本比 `length`+前 120 字符、图片比 `getSize()` 尺寸，**确认可能变了才做 toJPEG/哈希**；轮询间隔 500ms→750ms。空闲时（剪贴板内容不变）几乎零成本。 |
 | **重复项无效广播** | 剪贴板内容不变时主进程仍每轮向渲染进程推送整表（含 base64 缩略图），放大渲染重渲染 | 根因：`store.ts` 的 `addText`/`addImage` 命中已存在项时仍 `this.emit()`。修复：重复项仅刷新 `updatedAt` + `scheduleSave()`，不再 `emit()`。 |
 | **Enter 键粘贴/复制失效（已修）** | 面板内选中条目按 Enter 应粘贴/复制，但无反应（可能抛 `clip.paste is not a function`） | 根因：`App.tsx` 的 `onKey` 里 `const clip = filtered.find(...)` 把外层 `clip`（ClipApi）变量**遮蔽**成本地 `Clip` 数据对象，后续 `clip.paste(selectedId)` 调的是数据对象而非 API，类型/运行均错。修复：局部变量改名为 `hit`，`clip.paste/copy` 走外层 ClipApi（2026-08-09 补修）。双击中键 `handleDouble` 用的是外层 `clip`，一直正常。 |
+
+| **更新弹窗 Release Notes 显示原始 HTML 标签（已修 2026-08-09）** | 更新提示弹窗里把 GitHub Release 的 `<p>/<ul>/<li>` 标签原样当成文本显示，且内容超出弹窗不可滚动 | 根因：`App.tsx` / `preferences.tsx` 的更新弹窗用 `<pre>{updateInfo.notes}</pre>` 渲染 notes，未解析 HTML 且不可滚动。修复：改用 `<div dangerouslySetInnerHTML={{__html: notes}}>` 渲染富文本，容器加 `maxHeight:180 + overflowY:auto + scrollbarWidth:'thin'` 可滚动。注意：notes 来自 GitHub Release 正文（可信源），`dangerouslySetInnerHTML` 在此可接受；不要改回 `<pre>`。 |
+| **偏好设置标题错显"设置"（已修 2026-08-09）** | 独立偏好设置窗口顶部标题仍是"设置"而非"偏好设置" | 根因：`SettingsForm` 未提供标题定制能力，写死 `<h2>设置</h2>`。修复：`SettingsForm` 新增可选 `title` prop（默认 `'设置'`），面板弹窗传默认、偏好窗口传 `title="偏好设置"`。 |
+| **偏好设置点"检查"无反应（已修 2026-08-09）** | 在独立偏好设置窗口点"检查更新"界面无任何变化，而主面板点却正常 | 根因：`updater.ts` 的 `setupUpdater` 只向「面板窗口」单发 `UPDATE_STATE`，偏好窗口不在广播列表 → 即使 IPC 调用成功也无 UI 反馈。修复：`updater.ts` 维护 `updateWindows[]` 数组改为**多窗口广播**，新增 `registerUpdateWindow()`；`preferences.ts` 导出 `getPreferencesWindow()`；`index.ts` bootstrap 中 `registerUpdateWindow(getPreferencesWindow)` 注册偏好窗口；`preferences.tsx` 订阅 `UPDATE_STATE` 并渲染完整 UpdateModal。 |
+| **设置/偏好白屏崩溃（已修 2026-08-09）** | 打开面板设置或偏好设置窗口直接白屏，看不到任何内容 | 根因：`SettingsForm` 函数体已引用 `{title ?? '设置'}`，但**函数签名漏了解构 `title`**（`{ onClose }` 而非 `{ onClose, title }`），运行时 `ReferenceError: title is not defined` 导致 React 渲染崩溃 → 整页白屏。修复：补全签名为 `SettingsForm({ onClose, title }: { onClose: () => void; title?: string })`。**教训：给组件加 prop 时，签名解构与 JSX 引用必须同步改，否则就是运行时崩溃而非编译期报错（TS 宽松模式下不报错）。** |
 
 ---
 
@@ -162,10 +170,11 @@ npm run dist:win  # 打包 Windows nsis
 - ✅ **已在真机验证 GUI**：用户已安装 dmg 实测——菜单栏托盘图标可见、点击弹菜单（打开面板/偏好设置/退出）、独立偏好设置窗口样式与值同步、面板设置均已验证。剩余如 Windows 版打包、粘贴辅助功能授权仍建议真机确认。
 - ✅ **electron-updater 已配置并发版**：`electron-builder.yml` 已加 `publish: github`（owner hyojooo / repo Shelf），已发布 v1.0.0 Release（`latest-mac.yml` + 两个 dmg）。后续发版跑 `npm run publish` 即触发自动更新检测。**注意 `publish` 脚本已加 `--mac --win`**（原先漏写平台参数，导致只打 macOS 包；Windows 包需要 wine，Homebrew 的 `wine-stable` 已标 deprecated，预计 2026-09-01 下架）。
 - ✅ **CPU 占用已修复（2026-08-09）**：渲染进程 192% 无限重渲染循环（`App.tsx` effect 依赖含 `filtered`）+ 主进程 33% 轮询烧（`clipboard.ts` 判重前做贵操作）已修复。修复后空闲时各进程 CPU 应趋近 0%。详见第 5 节「渲染进程 CPU 192% 死循环」「主进程 CPU 33% 轮询烧」「重复项无效广播」三条。
+- ✅ **更新弹窗 + 偏好设置同步（2026-08-09 后续）**：更新提示弹窗补全四态 UI（available 发现新版本 / downloaded 已下载 / error 检查失败 / not-available 已是最新），Release Notes 现以富文本渲染且可滚动；偏好设置窗口标题改「偏好设置」并接入 `updater.ts` 多窗口广播，点"检查"与主面板行为一致；修复 `SettingsForm` 缺 `title` 解构导致的白屏崩溃。详见第 5 节「更新弹窗 Release Notes 显示原始 HTML 标签」「偏好设置标题错显"设置"」「偏好设置点"检查"无反应」「设置/偏好白屏崩溃」四条。
 - [ ] 复制/粘贴快捷键默认 `Cmd/Ctrl+C` 复制选中项；面板唤起快捷键默认 `CommandOrControl+Shift+V`，可在设置页改。
 - [ ] **UI 当前状态**：界面采用清新绿主调 —— accent 浅色 `#059669` / 深色 `#34d399`（CSS 变量 `--accent` / `--accent-soft`，定义在 `src/renderer/styles/global.css` 顶部 `:root` 与 `:root[data-theme='dark']`）。该配色与 app 图标（薄荷绿 `#34d399` → 翠绿 `#059669` 渐变）统一，由用户 2026-08-09 明确要求从蓝(`#2f6df6`)切换而来。注意：菜单栏托盘图标沿用 `assets/icon.png` 缩放，同为绿色，与界面主色一致。近期 UI 增量：关闭右侧预览时左侧选中态同步取消（视觉一致）、右侧空白区显示浮动小熊 SVG 空状态、预览文本支持鼠标部分选中复制（`.preview-text` 覆写 `user-select:text`）。
 - [ ] **新增「收藏」入口已上线**：列表项 hover 出 ★ 可收藏，标签页新增「收藏」统一查看；收藏项在「全部」标签中置顶。
-- [ ] **代码未提交 git**：截至 2026-08-08 所有改动（菜单栏托盘、独立偏好设置窗口等）仍在 working tree，未 `git commit`。发布/交接前建议先 commit 一次以保留源码与包一致。
+- [ ] **代码未提交 git**：截至 2026-08-09 所有改动（菜单栏托盘、独立偏好设置窗口、CPU 修复、Enter 修复、更新弹窗四态 UI、偏好同步、白屏修复等）仍在 working tree，未 `git commit`。发布/交接前建议先 commit 一次以保留源码与包一致。
 
 ---
 

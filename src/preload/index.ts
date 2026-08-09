@@ -15,6 +15,7 @@ const api = {
   updateSettings: (partial: Partial<Settings>): Promise<Settings> =>
     ipcRenderer.invoke(IPC.UPDATE_SETTINGS, partial),
   checkUpdate: (): Promise<unknown> => ipcRenderer.invoke(IPC.CHECK_UPDATE),
+  getVersion: (): Promise<string> => ipcRenderer.invoke(IPC.GET_VERSION),
   installUpdate: (): void => ipcRenderer.send(IPC.INSTALL_UPDATE),
   quit: (): Promise<boolean> => ipcRenderer.invoke(IPC.QUIT),
 
