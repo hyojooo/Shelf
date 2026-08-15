@@ -1,49 +1,49 @@
-import { app } from 'electron'
-import { promises as fs } from 'node:fs'
-import path from 'node:path'
+import { app } from 'electron';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
-// 崩溃与异常日志（功能 10）：写入 userData/logs/app-YYYY-MM-DD.log
-const logsDir = () => path.join(app.getPath('userData'), 'logs')
-let inited = false
+const logsDir = () => path.join(app.getPath('userData'), 'logs');
+let inited = false;
 
 async function ensure(): Promise<void> {
-  if (inited) return
+  if (inited) return;
   try {
-    await fs.mkdir(logsDir(), { recursive: true })
-  } catch {
-    /* ignore */
-  }
-  inited = true
+    await fs.mkdir(logsDir(), { recursive: true });
+  } catch {}
+  inited = true;
 }
 
 function logFileForToday(): string {
-  return path.join(logsDir(), `app-${new Date().toISOString().slice(0, 10)}.log`)
+  return path.join(
+    logsDir(),
+    `app-${new Date().toISOString().slice(0, 10)}.log`,
+  );
 }
 
 export async function logError(err: unknown, context?: string): Promise<void> {
-  await ensure()
-  const ts = new Date().toISOString()
+  await ensure();
+  const ts = new Date().toISOString();
   const msg = `[${ts}]${context ? ' [' + context + ']' : ''} ${
     err instanceof Error ? err.stack || err.message : String(err)
-  }\n`
+  }\n`;
   try {
-    await fs.appendFile(logFileForToday(), msg)
+    await fs.appendFile(logFileForToday(), msg);
   } catch {
     /* ignore */
   }
-  console.error(msg)
+  console.error(msg);
 }
 
 export function logInfo(msg: string): void {
-  console.log(`[${new Date().toISOString()}] ${msg}`)
+  console.log(`[${new Date().toISOString()}] ${msg}`);
 }
 
 /** 安装全局崩溃处理器，异常时自动记录日志 */
 export function installCrashHandlers(): void {
   process.on('uncaughtException', (e) => {
-    void logError(e, 'uncaughtException')
-  })
+    void logError(e, 'uncaughtException');
+  });
   process.on('unhandledRejection', (e) => {
-    void logError(e, 'unhandledRejection')
-  })
+    void logError(e, 'unhandledRejection');
+  });
 }

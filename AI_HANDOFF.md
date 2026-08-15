@@ -26,7 +26,8 @@ clipboard-manager/
 ├── tsconfig.json
 ├── src/
 │   ├── shared/               # 主/渲染共享的纯逻辑（可单测、无 Electron 依赖）
-│   │   ├── types.ts          # 全局类型 + IPC 频道常量；ClipTab 含 'all'|'text'|'image'|'favorite'；Settings 含 panelPosition（'cursor'|'center'，默认 center）
+│   │   ├── i18n/             # 多语言：locales/*.json（en/zh-CN/zh-TW/ja/ko/ru/vi）+ index.ts 的 t()/LANGUAGES/getLang；**Language 类型定义在 types.ts**，Settings.language（默认 'en'）
+│   │   ├── types.ts          # 全局类型 + IPC 频道常量；ClipTab 含 'all'|'text'|'image'|'favorite'；Settings 含 panelPosition（'cursor'|'center'，默认 center）；Settings 含 language（默认 'en'）
 │   │   ├── hash.ts           # SHA-256 内容哈希去重（文本/图片盐值隔离）
 │   │   ├── search.ts         # 模糊搜索（子序列打分 + 图片时间戳匹配）；filterClips 支持 favorite 分支仅显示收藏
 │   │   └── cleanup.ts        # 超量清理策略（收藏豁免、最旧 N 条）
@@ -36,7 +37,7 @@ clipboard-manager/
 │   │   ├── clipboard.ts      # 剪切板监听 + 捕获（含抑制回环 suppressNextCapture）；750ms 轮询 + 廉价前置检测（文本比长度+前缀、图片比尺寸）后再做昂贵 toJPEG/哈希
 │   │   ├── store.ts          # 内存存储 + JSON 原子持久化 + 图片压缩存盘；addText/addImage 命中重复项时仅刷时间戳+落盘、不再 emit（避免无效 IPC 放大渲染重渲染）
 │   │   ├── settings.ts       # 设置读写（maxItems/cleanupBatch 等）
-│   │   ├── tray.ts           # 菜单栏托盘：点击弹出菜单（打开面板/偏好设置/退出）；图标 assets/icon.png 缩放 22px
+│   │   ├── tray.ts           # 菜单栏托盘：用 t() 构建本地化菜单（打开面板/偏好设置/退出）；setTrayLanguage() 运行时切换；图标 assets/icon.png 缩放 22px
 │   │   ├── preferences.ts    # 独立偏好设置窗口（frameless 单实例，复用 SettingsForm，✕ 关闭）；导出 getPreferencesWindow() 供更新模块广播
 │   │   ├── shortcut.ts       # globalShortcut 注册/注销
 │   │   ├── updater.ts        # electron-updater 更新检查 + 多窗口广播（registerUpdateWindow）；checkForUpdates 失败经 IPC 推 error 状态
@@ -44,12 +45,13 @@ clipboard-manager/
 │   ├── preload/
 │   │   └── index.ts          # contextBridge 暴露 window.clip API（导出类型 ClipApi）
 │   └── renderer/             # React 渲染进程
-│       ├── App.tsx           # 根组件：键盘导航、事件订阅（mount 一次性注册）、主题；getAll 仅在 mount 拉取一次，之后靠 IPC.UPDATED 推送；VISIBILITY handler 用 filteredRef 读最新列表；内嵌 UpdateModal 弹窗（available/downloaded/error/not-available 四态）
+│       ├── App.tsx           # 根组件：键盘导航、事件订阅（mount 一次性注册）、主题；getAll 仅在 mount 拉取一次，之后靠 IPC.UPDATED 推送；VISIBILITY handler 用 filteredRef 读最新列表；内嵌 UpdateModal 弹窗（available/downloaded/error/not-available 四态）；not-available 底部轻提示 2.5s 定时自动消失（setTimeout effect）
+│       ├── i18n.tsx          # 【关键】I18nProvider + useT()/useLang() hook：从 settings.language 读当前语言，切换即整体重渲染；同步 <html lang>
 │       ├── clip-api.ts       # 【关键】安全访问 window.clip 的包装层 getClip()
 │       ├── main.tsx          # React 挂载入口
 │       ├── index.html
 │       ├── preferences.html  # 独立偏好设置窗口 HTML 入口（electron-vite 多入口）
-│       ├── preferences.tsx  # 独立偏好设置窗口：挂载 SettingsForm（title="偏好设置"）；订阅 UPDATE_STATE + 内嵌 UpdateModal（与面板同步）；✕ 关闭（window.close）
+│       ├── preferences.tsx  # 独立偏好设置窗口：挂载 SettingsForm（title="偏好设置"）；订阅 UPDATE_STATE + 内嵌 UpdateModal（与面板同步）；not-available 底部轻提示 2.5s 定时自动消失；✕ 关闭（window.close）
 │       ├── store/useStore.ts # zustand 状态管理
 │       ├── components/
 │       │   ├── Tabs.tsx          # 全部/文本/图片/收藏 分类标签（收藏带 SVG 星标）
@@ -142,6 +144,8 @@ clipboard-manager/
 | **偏好设置点"检查"无反应（已修 2026-08-09）** | 在独立偏好设置窗口点"检查更新"界面无任何变化，而主面板点却正常 | 根因：`updater.ts` 的 `setupUpdater` 只向「面板窗口」单发 `UPDATE_STATE`，偏好窗口不在广播列表 → 即使 IPC 调用成功也无 UI 反馈。修复：`updater.ts` 维护 `updateWindows[]` 数组改为**多窗口广播**，新增 `registerUpdateWindow()`；`preferences.ts` 导出 `getPreferencesWindow()`；`index.ts` bootstrap 中 `registerUpdateWindow(getPreferencesWindow)` 注册偏好窗口；`preferences.tsx` 订阅 `UPDATE_STATE` 并渲染完整 UpdateModal。 |
 | **设置/偏好白屏崩溃（已修 2026-08-09）** | 打开面板设置或偏好设置窗口直接白屏，看不到任何内容 | 根因：`SettingsForm` 函数体已引用 `{title ?? '设置'}`，但**函数签名漏了解构 `title`**（`{ onClose }` 而非 `{ onClose, title }`），运行时 `ReferenceError: title is not defined` 导致 React 渲染崩溃 → 整页白屏。修复：补全签名为 `SettingsForm({ onClose, title }: { onClose: () => void; title?: string })`。**教训：给组件加 prop 时，签名解构与 JSX 引用必须同步改，否则就是运行时崩溃而非编译期报错（TS 宽松模式下不报错）。** |
 
+| **「已是最新版本」toast 不自动消失（已修 2026-08-13）** | 更新检查返回"已是最新"时底部绿色轻提示 pill 一直停留，只能点击关闭 | 根因：not-available 状态的轻提示 div 仅绑定 `onClick={() => setUpdateDismissed(true)}`，无定时消失逻辑；用户觉得它该像 toast 一样自动退场。修复：`App.tsx` 与 `preferences.tsx` 各加一个 effect——当 `updateStatus==='not-available' && !updateDismissed` 时 `setTimeout(2500ms)` 调 `setUpdateDismissed(true)`，cleanup 清除定时器（状态提前切换时安全）；仍可点击立即关闭。**注意：error / available / downloaded 三态弹窗刻意保持「需手动关闭」不变（避免误关丢失操作），不要给它们也加自动消失。** |
+
 ---
 
 ## 6. 如何运行 / 验证
@@ -174,7 +178,9 @@ npm run dist:win  # 打包 Windows nsis
 - [ ] 复制/粘贴快捷键默认 `Cmd/Ctrl+C` 复制选中项；面板唤起快捷键默认 `CommandOrControl+Shift+V`，可在设置页改。
 - [ ] **UI 当前状态**：界面采用清新绿主调 —— accent 浅色 `#059669` / 深色 `#34d399`（CSS 变量 `--accent` / `--accent-soft`，定义在 `src/renderer/styles/global.css` 顶部 `:root` 与 `:root[data-theme='dark']`）。该配色与 app 图标（薄荷绿 `#34d399` → 翠绿 `#059669` 渐变）统一，由用户 2026-08-09 明确要求从蓝(`#2f6df6`)切换而来。注意：菜单栏托盘图标沿用 `assets/icon.png` 缩放，同为绿色，与界面主色一致。近期 UI 增量：关闭右侧预览时左侧选中态同步取消（视觉一致）、右侧空白区显示浮动小熊 SVG 空状态、预览文本支持鼠标部分选中复制（`.preview-text` 覆写 `user-select:text`）。
 - [ ] **新增「收藏」入口已上线**：列表项 hover 出 ★ 可收藏，标签页新增「收藏」统一查看；收藏项在「全部」标签中置顶。
-- [ ] **代码未提交 git**：截至 2026-08-09 所有改动（菜单栏托盘、独立偏好设置窗口、CPU 修复、Enter 修复、更新弹窗四态 UI、偏好同步、白屏修复等）仍在 working tree，未 `git commit`。发布/交接前建议先 commit 一次以保留源码与包一致。
+- [ ] **代码未提交 git**：截至 2026-08-13 所有改动（菜单栏托盘、独立偏好设置窗口、CPU 修复、Enter 修复、更新弹窗四态 UI、偏好同步、白屏修复、**多语言 i18n（7 语言/默认 English）**、**「已是最新版本」toast 自动消失**）仍在 working tree，未 `git commit`。发布/交接前建议先 commit 一次以保留源码与包一致。
+- ✅ **多语言已上线（2026-08-13）**：界面支持 English / 简体中文 / 繁體中文 / 日本語 / 한국어 / Русский / Tiếng Việt，**默认 English**。零依赖自研 i18n——`src/shared/i18n/locales/*.json` 字典 + `t(lang,key,params)` 函数；渲染进程经 `I18nProvider`+`useT()`（语言存 `settings.language`，切换即重渲染），主进程托盘菜单直接调 `t()` 并经 `setTrayLanguage()` 运行时切换。设置页「外观」分组新增「语言」下拉（母语名）。新增文案：在 7 个 locale JSON 同步加 key，组件用 `t('key')` 引用，**不要**再写死字符串。字体栈已补 Hiragino Sans / Apple SD Gothic Neo 兜底中日韩。
+- ✅ **「已是最新版本」toast 自动消失（2026-08-13）**：更新检查返回"已是最新"时底部绿色轻提示现展示约 2.5s 后自动退场（仍可点击立即关闭）。`App.tsx`/`preferences.tsx` 各加一个定时 effect（依赖 `updateStatus`/`updateDismissed`，cleanup 清除定时器）。error / available / downloaded 三态弹窗仍刻意保持「需手动关闭」，不要给它们也加自动消失（避免误关丢失操作）。
 
 ---
 

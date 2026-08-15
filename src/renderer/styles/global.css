@@ -1,4 +1,4 @@
-/* ===== Shelf 全局样式 ===== */
+
 :root {
   --bg: #ffffff;
   --panel: #f6f7f9;
@@ -42,7 +42,7 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans', 'Apple SD Gothic Neo', 'Noto Sans CJK SC', 'Noto Sans CJK JP', 'Noto Sans CJK KR', sans-serif;
   font-size: 13px;
   color: var(--text);
   background: var(--bg);
@@ -71,12 +71,12 @@ body {
   }
 }
 
-/* ===== 顶栏 / 标签页 ===== */
+
 .topbar {
   display: flex;
   align-items: center;
   padding: 12px 12px 4px;
-  /* 无边框窗口：顶栏作为拖拽区（仅 Electron 生效，浏览器中忽略） */
+  
   -webkit-app-region: drag;
   cursor: grab;
 }
@@ -91,7 +91,7 @@ body {
   padding: 3px;
   border-radius: 10px;
   width: 100%;
-  /* 标签页本身保持可点击，不参与拖拽 */
+  
   -webkit-app-region: no-drag;
 }
 
@@ -126,14 +126,14 @@ body {
   font-weight: 600;
 }
 
-/* ===== 搜索栏 ===== */
+
 .searchbar {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 12px 10px;
   border-bottom: 1px solid var(--border);
-  /* 输入框/按钮可交互，不参与拖拽 */
+  
   -webkit-app-region: no-drag;
 }
 
@@ -158,7 +158,7 @@ body {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-/* ===== 主体：左侧列表 + 右侧预览 两栏布局 ===== */
+
 .body {
   flex: 1;
   display: flex;
@@ -166,7 +166,7 @@ body {
   overflow: hidden;
 }
 
-/* ===== 内容区 / 虚拟列表（左侧固定宽度，不被挤压） ===== */
+
 .content {
   position: relative;
   width: 340px;
@@ -181,13 +181,13 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 6px 8px;
-  /* 隐藏滚动条但保留滚动功能 */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  
+  scrollbar-width: none; 
+  -ms-overflow-style: none; 
 }
 
 .vlist::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none; 
 }
 .empty {
   height: 100%;
@@ -206,7 +206,7 @@ body {
   opacity: 0.7;
 }
 
-/* ===== 列表项 ===== */
+
 .item {
   display: flex;
   align-items: center;
@@ -319,7 +319,7 @@ body {
   font-size: 15px;
 }
 
-/* ===== 右侧区域（预览 / 空状态） ===== */
+
 .preview-area {
   position: relative;
   flex: 1;
@@ -332,7 +332,7 @@ body {
   overflow: hidden;
 }
 
-/* ===== 预览（右侧固定列，非浮层抽屉） ===== */
+
 .preview {
   position: relative;
   flex: 1;
@@ -415,7 +415,7 @@ body {
   color: #fff;
 }
 
-/* ===== 右侧空状态（小熊） ===== */
+
 .preview-empty {
   flex: 1;
   display: flex;
@@ -440,7 +440,7 @@ body {
   50% { transform: translateY(-6px); }
 }
 
-/* ===== 设置弹窗（优雅重设计版） ===== */
+
 .modal-mask {
   position: absolute;
   inset: 0;
@@ -468,7 +468,7 @@ body {
   }
 }
 
-/* 弹窗容器 */
+
 .modal {
   width: 88%;
   max-width: 420px;
@@ -488,7 +488,7 @@ body {
   min-width: 400px;
 }
 
-/* 头部 */
+
 .modal-head {
   display: flex;
   align-items: center;
@@ -503,7 +503,7 @@ body {
   letter-spacing: -0.2px;
 }
 
-/* 可滚动内容区 */
+
 .modal-scroll {
   padding: 0 16px 16px;
   overflow-y: auto;
@@ -512,7 +512,7 @@ body {
 }
 .modal-scroll::-webkit-scrollbar { display: none; }
 
-/* ── 分组卡片 ── */
+
 .s-section {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -550,7 +550,7 @@ body {
   gap: 10px;
 }
 
-/* ── 字段通用 ── */
+
 .s-field {
   display: flex;
   align-items: center;
@@ -586,7 +586,7 @@ body {
   gap: 10px;
 }
 
-/* ── 快捷键捕获 ── */
+
 .shortcut-capture {
   display: flex;
   align-items: center;
@@ -624,7 +624,7 @@ body {
   color: var(--muted);
 }
 
-/* ── 面板位置选择器（卡片式）── */
+
 .position-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -675,7 +675,7 @@ body {
   line-height: 1.3;
 }
 
-/* ── 数字输入框 + 单位 ── */
+
 .num-input {
   display: flex;
   align-items: center;
@@ -712,7 +712,7 @@ body {
   white-space: nowrap;
 }
 
-/* ── 自定义 Toggle 开关 ── */
+
 .toggle {
   width: 42px;
   height: 24px;
@@ -743,7 +743,7 @@ body {
   transform: translateX(18px);
 }
 
-/* ── 下拉选择 & 按钮 ── */
+
 .s-select {
   border: 1px solid var(--border);
   background: var(--bg);
@@ -783,7 +783,7 @@ body {
   border-color: var(--accent);
 }
 
-/* ── 通用 icon-btn（保留给预览等处复用）── */
+
 .icon-btn {
   border: none;
   background: transparent;
@@ -803,7 +803,7 @@ body {
   color: var(--text);
 }
 
-/* ===== 独立偏好设置窗口 ===== */
+
 .pref-body {
   margin: 0;
   background: var(--bg);
@@ -813,7 +813,7 @@ body {
   position: absolute;
   inset: 0;
 }
-/* 让设置弹窗铺满独立窗口（去掉居中 / 遮罩感） */
+
 .pref-root .modal {
   width: 100%;
   max-width: none;
@@ -824,7 +824,7 @@ body {
   box-shadow: none;
   animation: none;
 }
-/* 标题栏可拖拽（frameless 窗口），关闭按钮不可拖拽 */
+
 .pref-root .modal-head {
   -webkit-app-region: drag;
   cursor: default;
