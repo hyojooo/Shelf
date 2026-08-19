@@ -22,6 +22,8 @@
   "preview.imageTitle": "Chi tiết hình ảnh",
   "preview.copy": "Sao chép",
   "preview.paste": "Dán",
+  "preview.copied": "Đã sao chép",
+  "preview.pasted": "Đã dán",
   "settings.title": "Cài đặt",
   "settings.preferencesTitle": "Tùy chọn",
   "settings.language": "Ngôn ngữ",

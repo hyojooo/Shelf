@@ -22,6 +22,8 @@
   "preview.imageTitle": "图片详情",
   "preview.copy": "复制",
   "preview.paste": "粘贴",
+  "preview.copied": "已复制",
+  "preview.pasted": "已粘贴",
   "settings.title": "设置",
   "settings.preferencesTitle": "偏好设置",
   "settings.language": "语言",

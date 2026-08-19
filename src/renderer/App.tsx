@@ -51,6 +51,9 @@ export default function App() {
   const setUpdate = useStore((s) => s.setUpdate);
   const updateInfo = useStore((s) => s.updateInfo);
   const updateStatus = useStore((s) => s.updateStatus);
+  const toast = useStore((s) => s.toast);
+  const showToast = useStore((s) => s.showToast);
+  const hideToast = useStore((s) => s.hideToast);
   const [updateDismissed, setUpdateDismissed] = useState(false);
   const t = useT();
 
@@ -173,6 +176,7 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
         if (selectedId) {
           void clip.copy(selectedId);
+          showToast(t('preview.copied'));
           e.preventDefault();
         }
         return;
@@ -188,8 +192,13 @@ export default function App() {
         const hit = filtered.find((c) => c.id === selectedId);
         if (!hit) return;
 
-        if (settings?.pasteOnDoubleClick) void clip.paste(selectedId);
-        else void clip.copy(selectedId);
+        if (settings?.pasteOnDoubleClick) {
+          void clip.paste(selectedId);
+          showToast(t('preview.pasted'));
+        } else {
+          void clip.copy(selectedId);
+          showToast(t('preview.copied'));
+        }
       }
     },
     [
@@ -200,6 +209,8 @@ export default function App() {
       select,
       preview,
       setSettingsOpen,
+      showToast,
+      t,
     ],
   );
 
@@ -215,15 +226,25 @@ export default function App() {
     }
   }, [updateStatus, updateDismissed]);
 
+  useEffect(() => {
+    if (toast) {
+      const id = window.setTimeout(() => hideToast(), 2000);
+      return () => window.clearTimeout(id);
+    }
+  }, [toast, hideToast]);
+
   const handleDouble = useCallback(
     (id: string) => {
-      if (settings?.pasteOnDoubleClick) void clip.paste(id);
-      else {
+      if (settings?.pasteOnDoubleClick) {
+        void clip.paste(id);
+        showToast(t('preview.pasted'));
+      } else {
         void clip.copy(id);
+        showToast(t('preview.copied'));
         preview(id);
       }
     },
-    [settings, preview],
+    [settings, preview, showToast, t],
   );
 
   return (
@@ -570,6 +591,37 @@ export default function App() {
           onClick={() => setUpdateDismissed(true)}
         >
           ✅ {t('update.upToDate')}
+        </div>
+      )}
+
+      {}
+      {toast && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 16,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--panel)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '8px 18px',
+            fontSize: 12,
+            color: 'var(--muted)',
+            boxShadow: 'var(--shadow)',
+            zIndex: 20,
+            animation: 'fade-in 0.2s ease-out',
+            pointerEvents: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+          onClick={() => hideToast()}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          {toast}
         </div>
       )}
     </div>

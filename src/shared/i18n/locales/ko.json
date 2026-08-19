@@ -22,6 +22,8 @@
   "preview.imageTitle": "이미지 세부 정보",
   "preview.copy": "복사",
   "preview.paste": "붙여넣기",
+  "preview.copied": "복사됨",
+  "preview.pasted": "붙여넣기됨",
   "settings.title": "설정",
   "settings.preferencesTitle": "환경 설정",
   "settings.language": "언어",

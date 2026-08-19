@@ -10,8 +10,19 @@ export default function Preview({
   onClose: () => void;
 }) {
   const clip = useStore((s) => s.clips.find((c) => c.id === id));
+  const showToast = useStore((s) => s.showToast);
   const t = useT();
   if (!clip) return null;
+
+  const handleCopy = () => {
+    void getClip().copy(clip.id);
+    showToast(t('preview.copied'));
+  };
+  const handlePaste = () => {
+    void getClip().paste(clip.id);
+    showToast(t('preview.pasted'));
+  };
+
   return (
     <aside className="preview">
       <div className="preview-head">
@@ -49,10 +60,10 @@ export default function Preview({
         <span>{(clip.size / 1024).toFixed(1)} KB</span>
       </div>
       <div className="preview-actions">
-        <button onClick={() => void getClip().copy(clip.id)}>{t('preview.copy')}</button>
+        <button onClick={handleCopy}>{t('preview.copy')}</button>
         <button
           className="primary"
-          onClick={() => void getClip().paste(clip.id)}
+          onClick={handlePaste}
         >
           {t('preview.paste')}
         </button>

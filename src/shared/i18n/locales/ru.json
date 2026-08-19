@@ -22,6 +22,8 @@
   "preview.imageTitle": "Сведения об изображении",
   "preview.copy": "Копировать",
   "preview.paste": "Вставить",
+  "preview.copied": "Скопировано",
+  "preview.pasted": "Вставлено",
   "settings.title": "Настройки",
   "settings.preferencesTitle": "Настройки",
   "settings.language": "Язык",

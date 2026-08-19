@@ -22,6 +22,8 @@
   "preview.imageTitle": "画像詳細",
   "preview.copy": "コピー",
   "preview.paste": "貼り付け",
+  "preview.copied": "コピーしました",
+  "preview.pasted": "貼り付けました",
   "settings.title": "設定",
   "settings.preferencesTitle": "環境設定",
   "settings.language": "言語",

@@ -22,6 +22,8 @@
   "preview.imageTitle": "Image Details",
   "preview.copy": "Copy",
   "preview.paste": "Paste",
+  "preview.copied": "Copied",
+  "preview.pasted": "Pasted",
   "settings.title": "Settings",
   "settings.preferencesTitle": "Preferences",
   "settings.language": "Language",
