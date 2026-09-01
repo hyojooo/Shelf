@@ -30,6 +30,7 @@ const clip: ClipApi =
         updateSettings: () => Promise.resolve({} as any),
         checkUpdate: () => Promise.resolve(null),
         getVersion: () => Promise.resolve('1.0.0'),
+        getImageUrl: () => Promise.resolve(''),
         installUpdate: () => {},
         quit: () => Promise.resolve(false),
         on: () => () => {},

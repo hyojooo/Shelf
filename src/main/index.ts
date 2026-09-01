@@ -1,5 +1,6 @@
 import { app, ipcMain, clipboard, nativeImage } from 'electron';
 import { execFile } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { IPC, type Clip, type Settings } from '../shared/types';
 import { installCrashHandlers, logError } from './logger';
 import { loadSettings, getSettings, saveSettings } from './settings';
@@ -181,6 +182,11 @@ async function bootstrap(): Promise<void> {
 
   ipcMain.handle(IPC.CHECK_UPDATE, () => checkForUpdates(getWindow));
   ipcMain.handle(IPC.GET_VERSION, () => app.getVersion());
+  ipcMain.handle(IPC.GET_IMAGE_URL, (_e, payload: { id: string }) => {
+    const p = store.getImagePath(payload.id);
+    if (!p) return '';
+    return pathToFileURL(p).href;
+  });
   ipcMain.handle(IPC.QUIT, () => {
     app.quit();
     return true;

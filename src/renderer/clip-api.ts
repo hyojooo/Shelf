@@ -77,6 +77,7 @@ const noopApi: ClipApi = {
   installUpdate: () => {},
   quit: () => Promise.resolve(false),
   getVersion: () => Promise.resolve('1.0.0'),
+  getImageUrl: () => Promise.resolve(imgPlaceholder),
   on: () => () => {},
 };
 
