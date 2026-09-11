@@ -1,53 +1,107 @@
+<div align="center">
+
+<img src="assets/logo.png" width="120" alt="Shelf logo" />
+
 # Shelf
 
-> 你的剪贴板「置物架」——把复制过的内容统统收好，随时取用。
+**Your clipboard's shelf — everything you copy, neatly stored and always at hand.**
 
-**Shelf** 是一款跨平台桌面剪切板管理工具（**macOS 10.15+ / Windows 10+**），自动帮你捕获、整理和回放复制过的文本与图片。
+A lightweight, cross-platform clipboard history manager for **macOS 10.15+** and **Windows 10+**.
+Shelf runs quietly in the background, capturing and organizing every piece of text and every image you copy, so you can search, preview and paste it back whenever you need it.
 
-![alt text](image.png)
+[![Release](https://img.shields.io/github/v/release/hyojooo/Shelf?color=22c55e)](https://github.com/hyojooo/Shelf/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/hyojooo/Shelf/total?color=22c55e)](https://github.com/hyojooo/Shelf/releases)
+[![License](https://img.shields.io/github/license/hyojooo/Shelf?color=22c55e)](./LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-22c55e)](#-platform-support)
 
-## ✨ 功能
+**English** &nbsp;·&nbsp; [简体中文](README.zh-CN.md)
 
-- 自动捕获文本与图片，按内容去重
-- 分类标签页：全部 / 文本 / 图片 / 收藏
-- 实时模糊搜索，随手定位历史片段
-- 单击预览、双击粘贴回原应用（智能处理失焦）
-- 收藏置顶、单条删除、一键清空
-- 本地持久化，超量自动清理（收藏永久保留）
-- 菜单栏 / 托盘常驻，全局快捷键一键唤起
+</div>
 
-## 🚀 使用
+![Shelf — clipboard history manager for macOS and Windows](assets/screenshot.png)
 
-1. 从 [Releases](../../releases) 下载对应平台安装包（macOS `dmg` / Windows `exe`），或用源码自行构建：
+---
 
-   ```bash
-   npm install
-   npm run dist:mac   # 打包 macOS
-   npm run dist:win   # 打包 Windows
-   ```
+## ✨ Features
 
-2. 启动后，按默认快捷键 **`Cmd/Ctrl + Shift + V`** 唤起面板；再按一次收起。
-3. 在列表里单击预览、双击即可把内容粘贴回你刚才操作的窗口。
+- **Automatic capture** — copied text and images are saved in the background; no extra action required
+- **Smart deduplication** — re-copying the same content refreshes its position instead of creating duplicates
+- **Tabbed browsing** — switch between All / Text / Images / Favorites
+- **Instant search** — fuzzy, real-time filtering across your whole clipboard history
+- **Click to preview, double-click to paste** — paste directly back into the app you were just using, with focus handling
+- **Favorites** — pin what matters most; favorites are never touched by automatic cleanup
+- **Image preview & zoom** — thumbnails in the list, click to view the full-size original
+- **Global hotkey** — one keystroke to summon or hide the panel
+- **Local & persistent** — history is stored on your machine only, with automatic pruning of older entries
+- **Menu bar / tray resident** — always one shortcut away, without cluttering your Dock
+- **Built-in auto-update** — new versions are detected, downloaded and installed in place
 
-## 🖥 平台说明
+## 📦 Install
 
-- **macOS**：粘贴功能需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权 Shelf；托盘常驻时会隐藏 Dock 图标。
-- **Windows**：开机自启通过安装器注册；粘贴使用系统快捷键模拟。
+### Download
 
-## 📦 发布（维护者）
+Grab the installer for your platform from the [Releases](https://github.com/hyojooo/Shelf/releases) page:
 
-自动更新依赖 GitHub Releases 元数据（`latest.yml` 等），必须用 publish 流程发布，不要手动上传安装包。
+| Platform | Package |
+| --- | --- |
+| macOS (Apple Silicon / Intel) | `.dmg` |
+| Windows 10+ | `.exe` |
+
+### Build from source
 
 ```bash
-# 1. 生成有 repo 权限的 GitHub Token，导出为环境变量（建议写入 ~/.zshrc）
-export GH_TOKEN=你的token
+git clone https://github.com/hyojooo/Shelf.git
+cd Shelf
+npm install
 
-# 2. 打包 + 自动创建 Release + 上传安装包与更新元数据
-npm run publish
+npm run dev        # run in development mode
+npm run dist:mac   # package for macOS
+npm run dist:win   # package for Windows
 ```
 
-> 仅本地出包不上传：`npm run dist:mac` / `npm run dist:win`。
+Requires Node.js 18 or newer.
+
+## 🚀 Usage
+
+1. Launch Shelf — it stays in the menu bar (macOS) or system tray (Windows).
+2. Press **`Cmd + Shift + V`** (macOS) or **`Ctrl + Shift + V`** (Windows) to summon the panel. Press it again to hide it.
+3. Single-click an item to preview it; double-click to paste it straight back into the window you were just working in.
+
+### Keyboard shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `↑` / `↓` | Move the selection |
+| `⌘/Ctrl + F` | Focus the search box |
+| `⌘/Ctrl + C` | Copy the selected item |
+| `Enter` | Copy or paste the selected item (depending on your settings) |
+| `Delete` / `Backspace` | Delete the selected item |
+| `Esc` | Close the preview / clear the selection |
+
+## 🖥 Platform support
+
+**macOS 10.15+**
+
+- Pasting requires Accessibility permission: **System Settings → Privacy & Security → Accessibility → enable Shelf**.
+- While resident in the menu bar, the Dock icon is hidden.
+
+**Windows 10+**
+
+- Launch at login is registered by the installer.
+- Pasting is performed by simulating the system paste shortcut.
+
+## 🛠 Tech stack
+
+Electron · React 18 · TypeScript · Vite (electron-vite) · Zustand · electron-builder / electron-updater
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome. If Shelf is useful to you, a ⭐ helps other people find it.
 
 ## 📄 License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE) © [hyojooo](https://github.com/hyojooo)
+
+<div align="center">
+<sub><a href="README.zh-CN.md">简体中文文档</a></sub>
+</div>
