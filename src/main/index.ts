@@ -27,6 +27,22 @@ import {
 
 installCrashHandlers();
 
+// Single-instance lock: prevent multiple Shelf processes on Windows
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+  process.exit(0);
+}
+
+app.on('second-instance', () => {
+  const w = getWindow();
+  if (w) {
+    if (w.isMinimized()) w.restore();
+    w.show();
+    w.focus();
+  }
+});
+
 let store: ClipStore;
 let currentAccelerator = '';
 
