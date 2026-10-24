@@ -42,10 +42,10 @@ Shelf runs quietly in the background, capturing and organizing every piece of te
 
 Grab the installer for your platform from the [Releases](https://github.com/hyojooo/Shelf/releases) page:
 
-| Platform | Package |
-| --- | --- |
-| macOS (Apple Silicon / Intel) | `.dmg` |
-| Windows 10+ | `.exe` |
+| Platform                      | Package |
+| ----------------------------- | ------- |
+| macOS (Apple Silicon / Intel) | `.dmg`  |
+| Windows 10+                   | `.exe`  |
 
 ### Build from source
 
@@ -69,14 +69,14 @@ Requires Node.js 18 or newer.
 
 ### Keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `↑` / `↓` | Move the selection |
-| `⌘/Ctrl + F` | Focus the search box |
-| `⌘/Ctrl + C` | Copy the selected item |
-| `Enter` | Copy or paste the selected item (depending on your settings) |
-| `Delete` / `Backspace` | Delete the selected item |
-| `Esc` | Close the preview / clear the selection |
+| Shortcut               | Action                                                       |
+| ---------------------- | ------------------------------------------------------------ |
+| `↑` / `↓`              | Move the selection                                           |
+| `⌘/Ctrl + F`           | Focus the search box                                         |
+| `⌘/Ctrl + C`           | Copy the selected item                                       |
+| `Enter`                | Copy or paste the selected item (depending on your settings) |
+| `Delete` / `Backspace` | Delete the selected item                                     |
+| `Esc`                  | Close the preview / clear the selection                      |
 
 ## 🖥 Platform support
 
