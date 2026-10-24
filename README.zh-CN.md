@@ -17,7 +17,7 @@
 
 </div>
 
-![Shelf — 跨平台剪贴板历史管理器](assets/screenshot.png)
+![Shelf — 跨平台剪贴板历史管理器](assets/screenshot-zh.png)
 
 ---
 
@@ -41,10 +41,10 @@
 
 前往 [Releases](https://github.com/hyojooo/Shelf/releases) 页面下载对应平台的安装包：
 
-| 平台 | 安装包 |
-| --- | --- |
+| 平台                           | 安装包 |
+| ------------------------------ | ------ |
 | macOS（Apple Silicon / Intel） | `.dmg` |
-| Windows 10+ | `.exe` |
+| Windows 10+                    | `.exe` |
 
 ### 从源码构建
 
@@ -68,14 +68,14 @@ npm run dist:win   # 打包 Windows
 
 ### 快捷键
 
-| 快捷键 | 作用 |
-| --- | --- |
-| `↑` / `↓` | 上下切换选中项 |
-| `⌘/Ctrl + F` | 聚焦搜索框 |
-| `⌘/Ctrl + C` | 复制选中项 |
-| `Enter` | 复制或粘贴选中项（取决于你的设置） |
-| `Delete` / `Backspace` | 删除选中项 |
-| `Esc` | 关闭预览 / 清空选中 |
+| 快捷键                 | 作用                               |
+| ---------------------- | ---------------------------------- |
+| `↑` / `↓`              | 上下切换选中项                     |
+| `⌘/Ctrl + F`           | 聚焦搜索框                         |
+| `⌘/Ctrl + C`           | 复制选中项                         |
+| `Enter`                | 复制或粘贴选中项（取决于你的设置） |
+| `Delete` / `Backspace` | 删除选中项                         |
+| `Esc`                  | 关闭预览 / 清空选中                |
 
 ## 🖥 平台支持
 
