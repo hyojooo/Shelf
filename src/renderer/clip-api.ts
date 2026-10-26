@@ -74,6 +74,7 @@ const noopApi: ClipApi = {
   getSettings: () => Promise.resolve(DEFAULT_SETTINGS),
   updateSettings: () => Promise.resolve(DEFAULT_SETTINGS),
   checkUpdate: () => Promise.resolve(null),
+  downloadUpdate: () => Promise.resolve(null),
   installUpdate: () => {},
   quit: () => Promise.resolve(false),
   getVersion: () => Promise.resolve('1.0.0'),

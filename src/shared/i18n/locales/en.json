@@ -67,5 +67,11 @@
   "update.errorDesc": "Unable to connect to the update server. Please try again later.",
   "update.ok": "OK",
   "update.upToDate": "You're up to date",
+  "update.whatsNew": "What's New",
+  "update.noNotes": "No release notes for this version.",
+  "update.downloading": "Downloading update…",
+  "update.background": "Continue in Background",
+  "update.retry": "Retry",
+  "update.errorSub": "Something went wrong while checking for updates",
   "alert.shortcutError": "Hotkey \"{acc}\" registration failed. It may be occupied by the system or another app. Please change it in Settings."
 }

@@ -8,6 +8,7 @@ import SearchBar from './components/SearchBar';
 import ClipList from './components/ClipList';
 import Preview from './components/Preview';
 import Settings from './components/Settings';
+import UpdateDialog from './components/UpdateDialog';
 import { useT } from './i18n';
 
 declare global {
@@ -29,6 +30,7 @@ const clip: ClipApi =
         getSettings: () => Promise.resolve({} as any),
         updateSettings: () => Promise.resolve({} as any),
         checkUpdate: () => Promise.resolve(null),
+        downloadUpdate: () => Promise.resolve(null),
         getVersion: () => Promise.resolve('1.0.0'),
         getImageUrl: () => Promise.resolve(''),
         installUpdate: () => {},
@@ -52,6 +54,8 @@ export default function App() {
   const setUpdate = useStore((s) => s.setUpdate);
   const updateInfo = useStore((s) => s.updateInfo);
   const updateStatus = useStore((s) => s.updateStatus);
+  const updatePercent = useStore((s) => s.updatePercent);
+  const setUpdatePercent = useStore((s) => s.setUpdatePercent);
   const toast = useStore((s) => s.toast);
   const showToast = useStore((s) => s.showToast);
   const hideToast = useStore((s) => s.hideToast);
@@ -143,7 +147,15 @@ export default function App() {
       ),
     ];
     return () => offs.forEach((off) => off());
-  }, [setClips, setSettings, setSettingsOpen, select, preview, setUpdate]);
+  }, [
+    setClips,
+    setSettings,
+    setSettingsOpen,
+    select,
+    preview,
+    setUpdate,
+    setUpdatePercent,
+  ]);
 
   const onKey = useCallback(
     (e: KeyboardEvent) => {
@@ -409,165 +421,24 @@ export default function App() {
       {!updateDismissed &&
         (updateStatus === 'available' ||
           updateStatus === 'downloaded' ||
+          updateStatus === 'progress' ||
           updateStatus === 'error') && (
-          <div
-            className="modal-mask"
-            onClick={() => updateStatus === 'error' && setUpdateDismissed(true)}
-          >
-            <div
-              className="modal update-modal"
-              onClick={(e) => e.stopPropagation()}
-              style={{ maxWidth: 380 }}
-            >
-              <div className="modal-head">
-                <h2>
-                  {updateStatus === 'downloaded'
-                    ? t('update.downloaded')
-                    : updateStatus === 'error'
-                      ? t('update.errorTitle')
-                      : t('update.found')}
-                </h2>
-                <button
-                  className="icon-btn"
-                  onClick={() => setUpdateDismissed(true)}
-                  title={t('clip.close')}
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="modal-body" style={{ padding: '16px 20px' }}>
-                {updateStatus === 'available' && updateInfo && (
-                  <>
-                    <p
-                      style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}
-                    >
-                      Shelf{' '}
-                      <span style={{ color: 'var(--accent)' }}>
-                        v{updateInfo.version}
-                      </span>
-                    </p>
-                    {updateInfo.notes && (
-                      <div
-                        style={{
-                          fontSize: 12.5,
-                          color: 'var(--muted)',
-                          lineHeight: 1.7,
-                          marginBottom: 16,
-                          background: 'var(--panel)',
-                          padding: 12,
-                          borderRadius: 8,
-                          border: '1px solid var(--border)',
-                          maxHeight: 180,
-                          overflowY: 'auto',
-                          scrollbarWidth: 'thin',
-                        }}
-                        dangerouslySetInnerHTML={{ __html: updateInfo.notes }}
-                      />
-                    )}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        className="s-btn"
-                        style={{
-                          flex: 1,
-                          padding: '9px 0',
-                          textAlign: 'center',
-                        }}
-                        onClick={() => setUpdateDismissed(true)}
-                      >
-                        {t('update.later')}
-                      </button>
-                      <button
-                        style={{
-                          flex: 1,
-                          padding: '9px 0',
-                          borderRadius: 8,
-                          border: 'none',
-                          background: 'var(--accent)',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          fontSize: 13,
-                          fontWeight: 600,
-                        }}
-                        onClick={() => {
-                          void clip.checkUpdate();
-                        }}
-                      >
-                        {t('update.downloadInstall')}
-                      </button>
-                    </div>
-                  </>
-                )}
-                {updateStatus === 'downloaded' && updateInfo && (
-                  <>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--text)',
-                        marginBottom: 12,
-                      }}
-                    >
-                      {t('update.downloadedDesc', {
-                        version: updateInfo.version,
-                      })}
-                    </p>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        className="s-btn"
-                        style={{
-                          flex: 1,
-                          padding: '9px 0',
-                          textAlign: 'center',
-                        }}
-                        onClick={() => setUpdateDismissed(true)}
-                      >
-                        {t('update.nextTime')}
-                      </button>
-                      <button
-                        style={{
-                          flex: 1,
-                          padding: '9px 0',
-                          borderRadius: 8,
-                          border: 'none',
-                          background: 'var(--accent)',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          fontSize: 13,
-                          fontWeight: 600,
-                        }}
-                        onClick={() => clip.installUpdate()}
-                      >
-                        {t('update.restartInstall')}
-                      </button>
-                    </div>
-                  </>
-                )}
-                {updateStatus === 'error' && (
-                  <>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--danger)',
-                        marginBottom: 12,
-                      }}
-                    >
-                      {updateInfo?.notes || t('update.errorDesc')}
-                    </p>
-                    <button
-                      className="s-btn"
-                      style={{
-                        width: '100%',
-                        padding: '9px 0',
-                        textAlign: 'center',
-                      }}
-                      onClick={() => setUpdateDismissed(true)}
-                    >
-                      {t('update.ok')}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <UpdateDialog
+            status={
+              updateStatus as 'available' | 'progress' | 'downloaded' | 'error'
+            }
+            version={updateInfo?.version ?? ''}
+            notes={updateInfo?.notes ?? ''}
+            percent={updatePercent}
+            errorText={updateInfo?.notes ?? ''}
+            onDismiss={() => setUpdateDismissed(true)}
+            onDownload={() => {
+              setUpdate(updateInfo, 'progress');
+              void clip.downloadUpdate();
+            }}
+            onRetry={() => void clip.checkUpdate()}
+            onInstall={() => clip.installUpdate()}
+          />
         )}
 
       {}

@@ -16,6 +16,7 @@ interface UIState {
   settingsOpen: boolean
   updateInfo: UpdateInfo | null
   updateStatus: string
+  updatePercent: number
   toast: string | null
   setClips: (c: Clip[]) => void
   setTab: (t: ClipTab) => void
@@ -25,6 +26,7 @@ interface UIState {
   setSettings: (s: Settings) => void
   setSettingsOpen: (b: boolean) => void
   setUpdate: (info: UpdateInfo | null, status: string) => void
+  setUpdatePercent: (percent: number) => void
   showToast: (msg: string) => void
   hideToast: () => void
 }
@@ -39,6 +41,7 @@ export const useStore = create<UIState>((set) => ({
   settingsOpen: false,
   updateInfo: null,
   updateStatus: 'idle',
+  updatePercent: 0,
   toast: null,
   setClips: (clips) => set({ clips }),
   setTab: (tab) => set({ tab }),
@@ -48,6 +51,7 @@ export const useStore = create<UIState>((set) => ({
   setSettings: (settings) => set({ settings }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setUpdate: (updateInfo, updateStatus) => set({ updateInfo, updateStatus }),
+  setUpdatePercent: (updatePercent) => set({ updatePercent }),
   showToast: (toast) => set({ toast }),
   hideToast: () => set({ toast: null }),
 }))

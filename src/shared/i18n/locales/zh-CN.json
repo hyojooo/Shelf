@@ -67,5 +67,11 @@
   "update.errorDesc": "无法连接到更新服务器，请稍后重试。",
   "update.ok": "知道了",
   "update.upToDate": "已是最新版本",
+  "update.whatsNew": "更新内容",
+  "update.noNotes": "该版本暂无更新说明。",
+  "update.downloading": "正在下载更新…",
+  "update.background": "后台下载",
+  "update.retry": "重试",
+  "update.errorSub": "检查更新时出现问题",
   "alert.shortcutError": "快捷键 \"{acc}\" 注册失败，可能已被系统或其它程序占用，请在设置中更换。"
 }

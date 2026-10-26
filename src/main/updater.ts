@@ -64,6 +64,15 @@ export async function checkForUpdates(
   }
 }
 
+export async function downloadUpdate(): Promise<unknown> {
+  try {
+    return await autoUpdater.downloadUpdate();
+  } catch (e) {
+    logError(e, 'updater');
+    return null;
+  }
+}
+
 export function quitAndInstall(): void {
   autoUpdater.quitAndInstall();
 }

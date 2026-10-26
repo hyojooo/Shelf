@@ -81,6 +81,7 @@ export const IPC = {
   GET_SETTINGS: 'settings:get',
   UPDATE_SETTINGS: 'settings:update',
   CHECK_UPDATE: 'updater:check',
+  DOWNLOAD_UPDATE: 'updater:download',
   GET_VERSION: 'app:get-version',
   GET_IMAGE_URL: 'app:get-image-url',
   QUIT: 'app:quit',

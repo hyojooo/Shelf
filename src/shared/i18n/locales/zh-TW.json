@@ -67,5 +67,11 @@
   "update.errorDesc": "無法連線到更新伺服器，請稍後重試。",
   "update.ok": "知道了",
   "update.upToDate": "已是最新版本",
+  "update.whatsNew": "更新內容",
+  "update.noNotes": "此版本尚無更新說明。",
+  "update.downloading": "正在下載更新…",
+  "update.background": "背景下載",
+  "update.retry": "重試",
+  "update.errorSub": "檢查更新時發生問題",
   "alert.shortcutError": "快捷鍵 \"{acc}\" 註冊失敗，可能已被系統或其它程式佔用，請在設定中更換。"
 }

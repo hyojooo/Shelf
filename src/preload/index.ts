@@ -15,6 +15,8 @@ const api = {
   updateSettings: (partial: Partial<Settings>): Promise<Settings> =>
     ipcRenderer.invoke(IPC.UPDATE_SETTINGS, partial),
   checkUpdate: (): Promise<unknown> => ipcRenderer.invoke(IPC.CHECK_UPDATE),
+  downloadUpdate: (): Promise<unknown> =>
+    ipcRenderer.invoke(IPC.DOWNLOAD_UPDATE),
   getVersion: (): Promise<string> => ipcRenderer.invoke(IPC.GET_VERSION),
   getImageUrl: (id: string): Promise<string> =>
     ipcRenderer.invoke(IPC.GET_IMAGE_URL, { id }),

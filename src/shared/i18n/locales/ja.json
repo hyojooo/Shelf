@@ -67,5 +67,11 @@
   "update.errorDesc": "更新サーバーに接続できません。後でもう一度お試しください。",
   "update.ok": "了解",
   "update.upToDate": "最新バージョンです",
+  "update.whatsNew": "更新内容",
+  "update.noNotes": "このバージョンの更新情報はありません。",
+  "update.downloading": "アップデートをダウンロード中…",
+  "update.background": "バックグラウンドで続行",
+  "update.retry": "再試行",
+  "update.errorSub": "アップデートの確認中に問題が発生しました",
   "alert.shortcutError": "ホットキー \"{acc}\" の登録に失敗しました。システムや他のアプリで使用中の可能性があります。設定で変更してください。"
 }

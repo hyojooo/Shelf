@@ -67,5 +67,11 @@
   "update.errorDesc": "업데이트 서버에 연결할 수 없습니다. 나중에 다시 시도하세요.",
   "update.ok": "확인",
   "update.upToDate": "최신 버전입니다",
+  "update.whatsNew": "업데이트 내용",
+  "update.noNotes": "이 버전의 업데이트 노트가 없습니다.",
+  "update.downloading": "업데이트 다운로드 중…",
+  "update.background": "백그라운드에서 계속",
+  "update.retry": "다시 시도",
+  "update.errorSub": "업데이트 확인 중 문제가 발생했습니다",
   "alert.shortcutError": "단축키 \"{acc}\" 등록에 실패했습니다. 시스템이나 다른 앱에서 사용 중일 수 있습니다. 설정에서 변경하세요."
 }

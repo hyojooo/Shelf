@@ -21,6 +21,7 @@ import { registerShortcut, unregister, unregisterAll } from './shortcut';
 import {
   setupUpdater,
   checkForUpdates,
+  downloadUpdate,
   quitAndInstall,
   registerUpdateWindow,
 } from './updater';
@@ -197,6 +198,7 @@ async function bootstrap(): Promise<void> {
   );
 
   ipcMain.handle(IPC.CHECK_UPDATE, () => checkForUpdates(getWindow));
+  ipcMain.handle(IPC.DOWNLOAD_UPDATE, () => downloadUpdate());
   ipcMain.handle(IPC.GET_VERSION, () => app.getVersion());
   ipcMain.handle(IPC.GET_IMAGE_URL, (_e, payload: { id: string }) => {
     const p = store.getImagePath(payload.id);

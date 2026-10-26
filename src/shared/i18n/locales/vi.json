@@ -67,5 +67,11 @@
   "update.errorDesc": "Không thể kết nối máy chủ cập nhật. Vui lòng thử lại sau.",
   "update.ok": "Đã hiểu",
   "update.upToDate": "Đã là phiên bản mới nhất",
+  "update.whatsNew": "Có gì mới",
+  "update.noNotes": "Bản này chưa có mô tả cập nhật.",
+  "update.downloading": "Đang tải bản cập nhật…",
+  "update.background": "Chạy nền",
+  "update.retry": "Thử lại",
+  "update.errorSub": "Đã xảy ra lỗi khi kiểm tra cập nhật",
   "alert.shortcutError": "Đăng ký phím tắt \"{acc}\" thất bại. Có thể đã bị hệ thống hoặc ứng dụng khác chiếm dụng. Vui lòng đổi trong Cài đặt."
 }
