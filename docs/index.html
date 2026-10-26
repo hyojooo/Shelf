@@ -241,6 +241,10 @@
     color: var(--text-dim);
   }
   .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .dl-alt { margin-top: 16px; font-size: 13px; color: var(--text-faint); }
+  .dl-alt a { color: var(--text-dim); }
+  .dl-alt a:hover { color: var(--green); }
+  .dl-btn.is-loading { opacity: 0.75; pointer-events: none; }
 
   /* Product mockup */
   .mockup {
@@ -444,16 +448,17 @@
 
 <header class="hero">
   <div class="wrap">
-    <span class="pill reveal"><span class="dot"></span> v1.1.1 · macOS &amp; Windows</span>
+    <span class="pill reveal"><span class="dot"></span> <span class="pill-ver">v1.1.1</span> · macOS &amp; Windows</span>
     <h1 class="reveal">Your clipboard's <span class="grad">shelf</span>.<span class="h1-line2">Everything you copy, always at hand.</span></h1>
     <p class="reveal">Shelf is a lightweight, cross-platform clipboard history manager. It runs quietly in the background, capturing every text snippet and image you copy — so you can search, preview, and paste them back anytime.</p>
     <div class="hero-cta reveal">
-      <span class="magnetic"><a class="btn btn-primary" href="https://github.com/hyojooo/Shelf/releases/latest" target="_blank" rel="noopener">
+      <span class="magnetic"><a class="btn btn-primary dl-btn" href="https://github.com/hyojooo/Shelf/releases/latest">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
-        Download for free
+        <span class="dl-label">Download for free</span>
       </a></span>
       <span class="magnetic"><a class="btn btn-ghost" href="https://github.com/hyojooo/Shelf" target="_blank" rel="noopener">View on GitHub</a></span>
     </div>
+    <div class="dl-alt reveal">Downloading for <b class="dl-os">your system</b> · <a href="https://github.com/hyojooo/Shelf/releases" target="_blank" rel="noopener">all platforms &amp; versions</a></div>
 
     <div class="mockup reveal">
       <div class="mock-bar">
@@ -612,9 +617,9 @@
       <h2>Stop losing what you copied.</h2>
       <p>Free and open-source. Grab the build for your system and your clipboard history is one shortcut away.</p>
       <div class="hero-cta">
-        <span class="magnetic"><a class="btn btn-primary" href="https://github.com/hyojooo/Shelf/releases/latest" target="_blank" rel="noopener">
+        <span class="magnetic"><a class="btn btn-primary dl-btn" href="https://github.com/hyojooo/Shelf/releases/latest">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
-          Download Shelf
+          <span class="dl-label">Download Shelf</span>
         </a></span>
         <span class="magnetic"><a class="btn btn-ghost" href="https://github.com/hyojooo/Shelf" target="_blank" rel="noopener">⭐ Star on GitHub</a></span>
       </div>
@@ -689,6 +694,67 @@
     document.querySelectorAll('.reveal').forEach(function (el, i) {
       el.style.transitionDelay = (i % 6) * 60 + 'ms';
       io.observe(el);
+    });
+
+    // Smart download: detect OS, fetch latest release assets, download directly
+    var GH_API = 'https://api.github.com/repos/hyojooo/Shelf/releases/latest';
+    var GH_LATEST = 'https://github.com/hyojooo/Shelf/releases/latest';
+    var ua = navigator.userAgent;
+    var os = /Windows/i.test(ua) ? 'win' : (/Mac OS X|Macintosh/i.test(ua) ? 'mac' : null);
+    var osName = os === 'win' ? 'Windows' : os === 'mac' ? 'macOS' : null;
+
+    if (osName) {
+      document.querySelectorAll('.dl-os').forEach(function (el) { el.textContent = osName; });
+      document.querySelectorAll('.dl-btn .dl-label').forEach(function (el) {
+        el.textContent = 'Download for ' + osName;
+      });
+    }
+
+    function pickAsset(assets) {
+      if (os === 'win') {
+        return assets.find(function (a) { return /\.exe$/i.test(a.name); });
+      }
+      if (os === 'mac') {
+        return assets.find(function (a) { return /arm64\.dmg$/i.test(a.name); }) ||
+               assets.find(function (a) { return /\.dmg$/i.test(a.name); });
+      }
+      return null;
+    }
+
+    // Refresh version pill from latest release tag (cached 1h to be nice to the API)
+    try {
+      var cached = JSON.parse(localStorage.getItem('shelf-release') || 'null');
+      if (cached && Date.now() - cached.t < 3600000) {
+        document.querySelectorAll('.pill-ver').forEach(function (el) { el.textContent = cached.tag; });
+      }
+    } catch (e) {}
+
+    document.querySelectorAll('.dl-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        if (!os) return; // non-desktop: fall through to releases page
+        e.preventDefault();
+        btn.classList.add('is-loading');
+        var label = btn.querySelector('.dl-label');
+        var orig = label ? label.textContent : '';
+        if (label) label.textContent = 'Downloading…';
+        fetch(GH_API).then(function (r) {
+          if (!r.ok) throw new Error('api');
+          return r.json();
+        }).then(function (data) {
+          try {
+            localStorage.setItem('shelf-release', JSON.stringify({ t: Date.now(), tag: data.tag_name }));
+            document.querySelectorAll('.pill-ver').forEach(function (el) { el.textContent = data.tag_name; });
+          } catch (e) {}
+          var asset = pickAsset(data.assets || []);
+          if (!asset) throw new Error('no-asset');
+          window.location.href = asset.browser_download_url;
+        }).catch(function () {
+          window.location.href = GH_LATEST;
+        }).finally(function () {
+          btn.classList.remove('is-loading');
+          if (label) label.textContent = orig;
+        });
+      });
     });
   })();
 </script>
