@@ -73,5 +73,14 @@
   "update.background": "Chạy nền",
   "update.retry": "Thử lại",
   "update.errorSub": "Đã xảy ra lỗi khi kiểm tra cập nhật",
-  "alert.shortcutError": "Đăng ký phím tắt \"{acc}\" thất bại. Có thể đã bị hệ thống hoặc ứng dụng khác chiếm dụng. Vui lòng đổi trong Cài đặt."
+  "alert.shortcutError": "Đăng ký phím tắt \"{acc}\" thất bại. Có thể đã bị hệ thống hoặc ứng dụng khác chiếm dụng. Vui lòng đổi trong Cài đặt.",
+  "onboarding.title": "Chào mừng đến với Shelf",
+  "onboarding.desc": "Lịch sử clipboard đã bật. Nhấn phím tắt bất cứ lúc nào để mở bảng, rồi nhấp đúp vào một mục để dán vào ứng dụng bạn đang dùng.",
+  "onboarding.shortcut": "Phím tắt hiện tại",
+  "onboarding.tray": "Bạn cũng có thể tìm thấy Shelf trên thanh menu ở góc trên bên phải màn hình.",
+  "onboarding.start": "Bắt đầu",
+  "alert.pasteError": "Không gửi được phím tắt dán. Hãy cho phép Shelf trong 「Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Trợ năng / Tự động hóa」, hoặc dùng 「Sao chép」 rồi dán thủ công.",
+  "settings.capturePlaceholder": "— nhấn tổ hợp phím —",
+  "settings.captureHint": "Esc hoặc nhấp ra ngoài để hủy",
+  "settings.needModifier": "Hãy giữ ít nhất một phím bổ trợ (⌘ / ⌃ / ⌥ / ⇧)"
 }

@@ -26,8 +26,25 @@ export default function VirtualList<T>({
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    if (ref.current) setViewportH(ref.current.clientHeight);
+    const el = ref.current;
+    if (!el) return;
+    setViewportH(el.clientHeight);
+    const ro = new ResizeObserver(() => setViewportH(el.clientHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
+
+  // 列表收缩（切标签 / 搜索 / 删除）后，旧的 scrollTop 会超出内容高度，
+  // 导致 start > end 而渲染出空列表 —— 必须把滚动位置夹回有效范围。
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const maxTop = Math.max(0, items.length * rowHeight - el.clientHeight);
+    if (el.scrollTop > maxTop) {
+      el.scrollTop = maxTop;
+      setScrollTop(maxTop);
+    }
+  }, [items.length, rowHeight]);
 
   const total = items.length * rowHeight;
   const start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);

@@ -15,7 +15,7 @@ declare global {
   }
 }
 
-const clip = window.clip!;
+const clip: ClipApi = getClip();
 
 const PreferencesApp = () => {
   const settings = useStore((s) => s.settings);
@@ -54,7 +54,7 @@ const PreferencesApp = () => {
       window.alert(t('alert.shortcutError', { acc }));
     });
     return () => off();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const off = clip.on(

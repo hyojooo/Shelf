@@ -84,6 +84,8 @@ export const IPC = {
   DOWNLOAD_UPDATE: 'updater:download',
   GET_VERSION: 'app:get-version',
   GET_IMAGE_URL: 'app:get-image-url',
+  GET_ONBOARDING_STATE: 'app:get-onboarding-state',
+  SHORTCUT_CAPTURE: 'settings:shortcut-capture',
   QUIT: 'app:quit',
 
   UPDATED: 'clip:updated',
@@ -92,6 +94,43 @@ export const IPC = {
   OPEN_SETTINGS: 'panel:open-settings',
   VISIBILITY: 'panel:visibility',
   SHORTCUT_ERROR: 'settings:shortcut-error',
+  FIRST_RUN: 'app:first-run',
+  FINISH_ONBOARDING: 'app:finish-onboarding',
+  PASTE_ERROR: 'clip:paste-error',
 
   INSTALL_UPDATE: 'app:install-update',
 } as const;
+
+/** renderer -> main 允许订阅的广播频道，避免 preload 暴露任意 ipc 频道 */
+export const RENDERER_CHANNELS = [
+  'clip:updated',
+  'settings:updated',
+  'updater:state',
+  'panel:open-settings',
+  'panel:visibility',
+  'settings:shortcut-error',
+  'app:first-run',
+  'clip:paste-error',
+] as const;
+
+/** 只允许带至少一个修饰键的全局快捷键，防止裸键劫持键盘 */
+export function isValidAccelerator(accel: unknown): accel is string {
+  if (typeof accel !== 'string' || accel.length === 0 || accel.length > 80) {
+    return false;
+  }
+  const parts = accel.split('+');
+  if (parts.length < 2) return false;
+  const modifiers = new Set([
+    'Command',
+    'Cmd',
+    'Control',
+    'Ctrl',
+    'CommandOrControl',
+    'Alt',
+    'Option',
+    'Shift',
+    'Super',
+    'Meta',
+  ]);
+  return parts.slice(0, -1).every((p) => modifiers.has(p));
+}

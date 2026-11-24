@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { getClip } from '../clip-api';
 import type {
@@ -9,6 +9,42 @@ import type {
 } from '../../shared/types';
 import { useT, useLang } from '../i18n';
 import { LANGUAGES } from '../../shared/i18n';
+
+/** 按平台格式化快捷键文案：macOS 用符号（⌘⇧V），Win/Linux 用文字（Ctrl+Shift+V） */
+function formatAccelerator(accel: string): string {
+  if (!accel) return '';
+  const ua = typeof navigator === 'undefined' ? '' : (navigator.platform || navigator.userAgent || '');
+  const isMac = /Mac|iPhone|iPad|iPod/i.test(ua);
+  const map: Record<string, string> = isMac
+    ? {
+        CommandOrControl: '⌘',
+        Command: '⌘',
+        Control: '⌃',
+        Alt: '⌥',
+        Option: '⌥',
+        Shift: '⇧',
+        Meta: '⌘',
+        Super: '⌘',
+      }
+    : {
+        CommandOrControl: 'Ctrl',
+        Command: 'Win',
+        Control: 'Ctrl',
+        Alt: 'Alt',
+        Option: 'Alt',
+        Shift: 'Shift',
+        Meta: 'Win',
+        Super: 'Win',
+      };
+  const parts = accel.split('+').map((part) => map[part] ?? part);
+  // 纯符号之间加窄空格，避免 ⌘⇧V 糊成一团；与字母数字相连时不加
+  const isSymbol = (x: string) => x.length === 1 && /[⌘⌃⌥⇧]/.test(x);
+  return parts.reduce((acc, part) => {
+    if (!acc) return part;
+    const needSpace = isSymbol(acc.slice(-1)) && isSymbol(part);
+    return acc + (needSpace ? '\u2009' : '') + part;
+  }, '');
+}
 
 function codeToDisplay(code: string): string | null {
   if (code.startsWith('Key') && code.length === 4) return code[3];
@@ -241,14 +277,21 @@ export function SettingsForm({
     settings ? { ...settings } : ({} as SettingsType),
   );
   const [capturing, setCapturing] = useState(false);
+  const [pending, setPending] = useState('');
+  const [captureError, setCaptureError] = useState('');
   const [appVersion, setAppVersion] = useState('');
+  const captureRef = useRef<HTMLDivElement>(null);
+  const captureHandlerRef = useRef<((e: KeyboardEvent) => void) | null>(null);
+  const capturingRef = useRef(false);
+  const endCaptureRef = useRef<() => void>(() => {});
+  const startAtRef = useRef(0);
   const t = useT();
   const lang = useLang();
 
-  // 当外部 settings 异步加载到达时，同步 draft（偏好窗口首次打开时 settings 可能还没就绪）
+  // 外部 settings 首次到达时填充 draft；之后不再覆盖用户正在编辑但未提交的输入
   useEffect(() => {
     if (settings && Object.keys(settings).length > 0) {
-      setDraft({ ...settings });
+      setDraft((d) => (Object.keys(d).length === 0 ? { ...settings } : d));
     }
   }, [settings]);
 
@@ -257,47 +300,129 @@ export function SettingsForm({
     void getClip().getVersion().then(setAppVersion);
   }, []);
 
+  // 捕获态下点击控件之外、或窗口失焦 -> 没按下组合键就恢复原来的快捷键
+  useEffect(() => {
+    if (!capturing) return;
+    const onDown = (e: MouseEvent) => {
+      if (
+        captureRef.current &&
+        !captureRef.current.contains(e.target as Node)
+      ) {
+        endCaptureRef.current();
+      }
+    };
+    const onBlur = () => endCaptureRef.current();
+    document.addEventListener('mousedown', onDown, true);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      document.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [capturing]);
+
+  // 组件卸载（含关闭面板内弹窗）时必须移除捕获监听并归还全局快捷键，
+  // 否则残留的 handler 会一直 preventDefault 导致键盘整体失灵。
+  useEffect(
+    () => () => {
+      if (captureHandlerRef.current) {
+        window.removeEventListener('keydown', captureHandlerRef.current, true);
+        captureHandlerRef.current = null;
+      }
+      if (capturingRef.current) getClip().setShortcutCapture(false);
+    },
+    [],
+  );
+
   if (!settings) return null;
 
-  const save = (patch: Partial<SettingsType>) => {
-    const next = { ...draft, ...patch };
-    setDraft(next);
-    void getClip().updateSettings(patch).then(setSettings);
+  const endCapture = () => {
+    // 真实鼠标点击进入捕获态时，React 同步重渲染（铅笔 -> 取消按钮）会让
+    // Chromium 把同一次 click 的后续派发落到新出现的取消按钮上，导致捕获态
+    // 刚开就被关掉（肉眼看不到任何变化）。启动后短时间内忽略退出请求。
+    if (startAtRef.current && Date.now() - startAtRef.current < 300) return;
+    if (captureHandlerRef.current) {
+      window.removeEventListener('keydown', captureHandlerRef.current, true);
+      captureHandlerRef.current = null;
+    }
+    capturingRef.current = false;
+    setCapturing(false);
+    setPending('');
+    setCaptureError('');
+    // draft 从未被改动，退出捕获自然显示回原来的快捷键
+    getClip().setShortcutCapture(false);
   };
+  endCaptureRef.current = endCapture;
 
-  // 快捷键捕获
-  // 注意：macOS 下 Alt/Option + 字母会触发字符组合（e.key 返回 ´ 等），
-  // 所以必须用 e.code（物理按键码）来识别实际按了哪个键。
-  const captureShortcut = () => {
+  const startCapture = () => {
+    if (capturingRef.current) return;
+    capturingRef.current = true;
+    startAtRef.current = Date.now();
     setCapturing(true);
+    setPending('');
+    setCaptureError('');
+    // 临时让出全局快捷键，否则按下「当前组合」会被系统级拦截，捕获不到
+    getClip().setShortcutCapture(true);
+
     const handler = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (e.key === 'Escape') {
-        window.removeEventListener('keydown', handler, true);
-        setCapturing(false);
+        endCapture();
         return;
       }
+
       const parts: string[] = [];
       if (e.metaKey) parts.push('Command');
       if (e.ctrlKey) parts.push('Control');
       if (e.altKey) parts.push('Alt');
       if (e.shiftKey) parts.push('Shift');
 
-      // 用 e.code 获取物理按键，避免 macOS 组合字符干扰
+      // 用 e.code 获取物理按键，避免 macOS Option 组合字符干扰
       const displayKey = codeToDisplay(e.code);
-      if (
-        displayKey &&
-        !['Control', 'Shift', 'Alt', 'Meta'].includes(displayKey)
-      ) {
-        const shortcut = [...parts, displayKey].join('+');
-        setDraft({ ...draft, globalShortcut: shortcut });
-        save({ globalShortcut: shortcut });
-        window.removeEventListener('keydown', handler, true);
-        setCapturing(false);
+      const isModifier = !displayKey ||
+        ['Control', 'Shift', 'Alt', 'Meta', 'CapsLock'].includes(displayKey);
+
+      // 只按住修饰键：实时显示已按下的部分，继续等主键
+      if (isModifier) {
+        setPending(parts.join('+'));
+        setCaptureError('');
+        return;
       }
+      // 裸键不允许注册（会全局劫持该键）
+      if (parts.length === 0) {
+        setPending('');
+        setCaptureError(t('settings.needModifier'));
+        return;
+      }
+
+      const shortcut = [...parts, displayKey].join('+');
+      setDraft((d) => ({ ...d, globalShortcut: shortcut }));
+      save({ globalShortcut: shortcut });
+      // 保存完成属于正常退出，重置防抖窗口，避免被上面启动保护误拦
+      startAtRef.current = 0;
+      endCapture();
     };
+    captureHandlerRef.current = handler;
     window.addEventListener('keydown', handler, true);
+  };
+
+  const save = (patch: Partial<SettingsType>) => {
+    setDraft((d) => ({ ...d, ...patch }));
+    void getClip()
+      .updateSettings(patch)
+      .then((next) => {
+        setSettings(next);
+        // 主进程注册快捷键失败时不会持久化新值，草稿必须回滚到真实生效的键
+        if (
+          patch.globalShortcut &&
+          next.globalShortcut !== patch.globalShortcut
+        ) {
+          setDraft((d) => ({ ...d, globalShortcut: next.globalShortcut }));
+        }
+      })
+      .catch(() => {
+        /* 保留草稿，等待广播回来的真实 settings */
+      });
   };
 
   // 面板位置选项
@@ -337,17 +462,77 @@ export function SettingsForm({
           <label className="s-field">
             <span className="s-label">{t('settings.globalShortcut')}</span>
             <div
+              ref={captureRef}
               className={`shortcut-capture ${capturing ? 'capturing' : ''}`}
-              onClick={captureShortcut}
+              onClick={startCapture}
+              onKeyDown={(e) => {
+                if (!capturing && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  startCapture();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={t('settings.globalShortcut')}
             >
-              <kbd>{draft.globalShortcut}</kbd>
-              <span className="shortcut-hint">
-                {capturing
-                  ? t('settings.pressCombo')
-                  : t('settings.clickToEdit')}
-              </span>
+              <div className="shortcut-main">
+                <kbd className={capturing ? 'pending' : ''}>
+                  {capturing ? (
+                    <>
+                      {pending && formatAccelerator(pending)}
+                      <span className="shortcut-caret" aria-hidden="true" />
+                    </>
+                  ) : (
+                    formatAccelerator(draft.globalShortcut)
+                  )}
+                </kbd>
+                {capturing ? (
+                  <button
+                    type="button"
+                    className="shortcut-cancel"
+                    aria-label={t('clip.close')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      endCapture();
+                    }}
+                  >
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                ) : (
+                  <span className="shortcut-edit" aria-hidden="true">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                    </svg>
+                  </span>
+                )}
+              </div>
+              {capturing && (
+                <div className="shortcut-sub">{t('settings.captureHint')}</div>
+              )}
             </div>
           </label>
+          {captureError && <div className="shortcut-error">{captureError}</div>}
         </Section>
 
         {/* ── 面板位置 ── */}

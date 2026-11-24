@@ -27,6 +27,11 @@ mac:
   minimumSystemVersion: '10.15'
   identity: null # 显式禁用代码签名（国内 Apple 时间戳服务器不可达，空字符串""会被当成自动检测而非禁用）
   forceCodeSigning: false
+  # macOS 10.14+ 未声明这些键时，AppleScript 的 activate / System Events keystroke
+  # 会被系统直接拒绝——这正是「点粘贴没反应/粘错位置」的配置层根因。
+  extendInfo:
+    NSAppleEventsUsageDescription: Shelf needs to activate the app you were using so pasted content lands at the right cursor position.
+    NSAccessibilityUsageDescription: Shelf needs Accessibility permission to send Command+V to the app you are currently using.
   target:
     - target: dmg
       arch:

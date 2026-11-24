@@ -9,6 +9,7 @@ import ClipList from './components/ClipList';
 import Preview from './components/Preview';
 import Settings from './components/Settings';
 import UpdateDialog from './components/UpdateDialog';
+import Onboarding from './components/Onboarding';
 import { useT } from './i18n';
 
 declare global {
@@ -34,6 +35,9 @@ const clip: ClipApi =
         getVersion: () => Promise.resolve('1.0.0'),
         getImageUrl: () => Promise.resolve(''),
         installUpdate: () => {},
+        setShortcutCapture: () => {},
+        finishOnboarding: () => Promise.resolve(true),
+        getOnboardingState: () => Promise.resolve(null),
         quit: () => Promise.resolve(false),
         on: () => () => {},
       };
@@ -60,10 +64,19 @@ export default function App() {
   const showToast = useStore((s) => s.showToast);
   const hideToast = useStore((s) => s.hideToast);
   const [updateDismissed, setUpdateDismissed] = useState(false);
+  const [onboarding, setOnboarding] = useState<{ shortcut: string } | null>(
+    null,
+  );
   const t = useT();
 
   const filtered = useMemo(() => {
     const list = filterClips(clips, tab, query);
+    if (query.trim()) {
+      // 有查询时 filterClips 已按匹配度降序，只做收藏置顶的稳定分组
+      return [...list].sort((a, b) =>
+        a.favorite !== b.favorite ? (a.favorite ? -1 : 1) : 0,
+      );
+    }
     return [...list].sort((a, b) => {
       if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
       return b.updatedAt - a.updatedAt;
@@ -91,14 +104,16 @@ export default function App() {
     preview(null);
   }, [tab, select, preview]);
 
-  useEffect(() => {
-    void clip.getAll().then(setClips);
-    void clip.getSettings().then(setSettings);
-  }, [setClips, setSettings]);
+  const liveUpdateRef = useRef(false);
 
   useEffect(() => {
+    liveUpdateRef.current = false;
+    let cancelled = false;
     const offs = [
-      clip.on(IPC.UPDATED, (c: Clip[]) => setClips(c)),
+      clip.on(IPC.UPDATED, (c: Clip[]) => {
+        liveUpdateRef.current = true;
+        setClips(c);
+      }),
       clip.on(IPC.SETTINGS_UPDATED, (s) => setSettings(s as SettingsType)),
       clip.on(IPC.OPEN_SETTINGS, () => setSettingsOpen(true)),
       clip.on(IPC.VISIBILITY, (visible: boolean) => {
@@ -114,7 +129,21 @@ export default function App() {
         }
       }),
       clip.on(IPC.SHORTCUT_ERROR, (acc: string) => {
-        window.alert(t('alert.shortcutError', { acc }));
+        // 不用 alert：面板失焦 120ms 后会自动隐藏，系统弹窗会被一起吞掉
+        showToast(t('alert.shortcutError', { acc }));
+      }),
+      clip.on(IPC.FIRST_RUN, (p: { shortcut?: string } | null) => {
+        if (p) setOnboarding({ shortcut: p.shortcut ?? '' });
+      }),
+      clip.on(IPC.PASTE_ERROR, (detail: string) => {
+        // 只在权限类失败时提示，图片文件缺失等另有日志
+        if (
+          /not authorized|assistive|accessibility|-1719|-1743|not allowed|permission/i.test(
+            String(detail),
+          )
+        ) {
+          showToast(t('alert.pasteError'));
+        }
       }),
       clip.on(
         IPC.UPDATE_STATE,
@@ -138,6 +167,7 @@ export default function App() {
           else if (st.status === 'error') {
             setUpdate({ version: '', notes: st.message ?? '' }, 'error');
           } else if (st.status === 'progress') {
+            setUpdatePercent(st.percent ?? 0);
             setUpdate(
               useStore.getState().updateInfo ?? { version: '', notes: '' },
               'progress',
@@ -146,7 +176,22 @@ export default function App() {
         },
       ),
     ];
-    return () => offs.forEach((off) => off());
+
+    void clip.getAll().then((c) => {
+      if (!cancelled && !liveUpdateRef.current) setClips(c);
+    });
+    void clip.getSettings().then((st) => {
+      if (!cancelled) setSettings(st);
+    });
+    // 首启广播可能早于 React 挂载，主动查询兜底
+    void clip.getOnboardingState().then((st) => {
+      if (!cancelled && st) setOnboarding(st);
+    });
+
+    return () => {
+      cancelled = true;
+      offs.forEach((off) => off());
+    };
   }, [
     setClips,
     setSettings,
@@ -155,12 +200,23 @@ export default function App() {
     preview,
     setUpdate,
     setUpdatePercent,
+    showToast,
+    t,
   ]);
+
+  const finishOnboarding = useCallback(() => {
+    setOnboarding(null);
+    void clip.finishOnboarding();
+  }, []);
 
   const onKey = useCallback(
     (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (onboarding) {
+        if (e.key === 'Escape') finishOnboarding();
+        return;
+      }
       if (e.key === 'Escape') {
         if (settingsOpen) setSettingsOpen(false);
         else {
@@ -198,6 +254,7 @@ export default function App() {
         if (selectedId) {
           void clip.deleteClip(selectedId);
           select(null);
+          preview(null);
         }
         return;
       }
@@ -224,6 +281,8 @@ export default function App() {
       setSettingsOpen,
       showToast,
       t,
+      onboarding,
+      finishOnboarding,
     ],
   );
 
@@ -262,6 +321,12 @@ export default function App() {
 
   return (
     <div className="app">
+      {onboarding && (
+        <Onboarding
+          shortcut={onboarding.shortcut}
+          onDone={finishOnboarding}
+        />
+      )}
       <header className="topbar">
         <Tabs />
       </header>
@@ -283,6 +348,7 @@ export default function App() {
               onDelete={(id) => {
                 void clip.deleteClip(id);
                 if (selectedId === id) select(null);
+                if (previewId === id) preview(null);
               }}
               onFavorite={(id, f) => void clip.favorite(id, f)}
             />

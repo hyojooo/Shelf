@@ -73,5 +73,14 @@
   "update.background": "Continue in Background",
   "update.retry": "Retry",
   "update.errorSub": "Something went wrong while checking for updates",
-  "alert.shortcutError": "Hotkey \"{acc}\" registration failed. It may be occupied by the system or another app. Please change it in Settings."
+  "alert.shortcutError": "Hotkey \"{acc}\" registration failed. It may be occupied by the system or another app. Please change it in Settings.",
+  "onboarding.title": "Welcome to Shelf",
+  "onboarding.desc": "Clipboard history is already on. Press the shortcut any time to open the panel, then double-click an item to paste it back into the app you're using.",
+  "onboarding.shortcut": "Your shortcut",
+  "onboarding.tray": "You can also find Shelf in the menu bar at the top right of your screen.",
+  "onboarding.start": "Get started",
+  "alert.pasteError": "Couldn't send the paste shortcut. Allow Shelf in System Settings → Privacy & Security → Accessibility / Automation, or use Copy and paste manually.",
+  "settings.capturePlaceholder": "— press a shortcut —",
+  "settings.captureHint": "Esc or click elsewhere to cancel",
+  "settings.needModifier": "Hold at least one modifier (Cmd / Ctrl / Alt / Shift)"
 }

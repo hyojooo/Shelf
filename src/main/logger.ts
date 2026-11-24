@@ -35,7 +35,12 @@ export async function logError(err: unknown, context?: string): Promise<void> {
 }
 
 export function logInfo(msg: string): void {
-  console.log(`[${new Date().toISOString()}] ${msg}`);
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  console.log(line.trimEnd());
+  // 打包后的应用没有控制台，落盘才能排查「菜单栏没图标」这类问题
+  void ensure().then(() =>
+    fs.appendFile(logFileForToday(), line).catch(() => {}),
+  );
 }
 
 /** 安装全局崩溃处理器，异常时自动记录日志 */

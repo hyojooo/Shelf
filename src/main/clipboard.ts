@@ -4,60 +4,39 @@ import type { ClipStore } from './store';
 
 let lastTextSig = '';
 let lastImageSig = '';
-let lastTextLen = -1;
-let lastTextHead = '';
-let lastImageW = -1;
-let lastImageH = -1;
-let suppress = false;
+let suppressUntil = 0;
+let monitorTimer: NodeJS.Timeout | null = null;
 
+/** 写入剪贴板后短暂抑制采集，避免把自己写进去的内容当成新记录 */
 export function suppressNextCapture(): void {
-  suppress = true;
+  suppressUntil = Date.now() + 900;
+}
+
+export function stopClipboardMonitor(): void {
+  if (monitorTimer) {
+    clearInterval(monitorTimer);
+    monitorTimer = null;
+  }
 }
 
 export function startClipboardMonitor(
   store: ClipStore,
   onAdded?: (added: boolean) => void,
 ): void {
-  const tick = () => {
-    if (suppress) {
-      suppress = false;
+  stopClipboardMonitor();
 
-      try {
-        const formats = clipboard.availableFormats();
-        if (formats.includes('text/plain')) {
-          const text = clipboard.readText();
-          if (text) {
-            lastTextSig = computeTextHash(text);
-            lastTextLen = text.length;
-            lastTextHead = text.slice(0, 120);
-          }
-        }
-        if (formats.some((f) => f.startsWith('image/'))) {
-          const img = clipboard.readImage();
-          if (!img.isEmpty()) {
-            const { width, height } = img.getSize();
-            const buf = img.toJPEG(80);
-            lastImageSig = computeImageHash(buf);
-            lastImageW = width;
-            lastImageH = height;
-          }
-        }
-      } catch {}
-      return;
-    }
+  const tick = () => {
     try {
       const formats = clipboard.availableFormats();
+      const suppressed = Date.now() < suppressUntil;
 
       if (formats.includes('text/plain')) {
         const text = clipboard.readText();
         if (text && text.length <= 5_000_000) {
-          if (
-            text.length !== lastTextLen ||
-            text.slice(0, 120) !== lastTextHead
-          ) {
-            const sig = computeTextHash(text);
-            if (sig !== lastTextSig) {
-              lastTextSig = sig;
+          const sig = computeTextHash(text);
+          if (sig !== lastTextSig) {
+            lastTextSig = sig;
+            if (!suppressed) {
               void store
                 .addText(text, sig, Date.now(), Buffer.byteLength(text, 'utf8'))
                 .then((r) => {
@@ -65,20 +44,19 @@ export function startClipboardMonitor(
                 });
             }
           }
-          lastTextLen = text.length;
-          lastTextHead = text.slice(0, 120);
         }
       }
 
       if (formats.some((f) => f.startsWith('image/'))) {
         const img = clipboard.readImage();
         if (!img.isEmpty()) {
-          const { width, height } = img.getSize();
-          if (width !== lastImageW || height !== lastImageH) {
-            const buf = img.toJPEG(80);
-            const sig = computeImageHash(buf);
-            if (sig !== lastImageSig) {
-              lastImageSig = sig;
+          // 每次都按内容算指纹：只比宽/高会让「同尺寸不同图」永久漏记
+          const sig = computeImageHash(img.toBitmap());
+          if (sig !== lastImageSig) {
+            lastImageSig = sig;
+            if (!suppressed) {
+              const { width, height } = img.getSize();
+              const buf = img.toJPEG(80);
               const thumb = img.resize({ width: 240 }).toDataURL();
               void store
                 .addImage(
@@ -97,8 +75,6 @@ export function startClipboardMonitor(
                 });
             }
           }
-          lastImageW = width;
-          lastImageH = height;
         }
       }
     } catch (e) {
@@ -106,5 +82,6 @@ export function startClipboardMonitor(
     }
   };
 
-  setInterval(tick, 750);
+  monitorTimer = setInterval(tick, 750);
+  tick();
 }

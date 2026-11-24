@@ -448,7 +448,7 @@
 
 <header class="hero">
   <div class="wrap">
-    <span class="pill reveal"><span class="dot"></span> <span class="pill-ver">v1.1.1</span> · macOS &amp; Windows</span>
+    <span class="pill reveal"><span class="dot"></span> <span class="pill-ver">v1.1.2</span> · macOS &amp; Windows</span>
     <h1 class="reveal">Your clipboard's <span class="grad">shelf</span>.<span class="h1-line2">Everything you copy, always at hand.</span></h1>
     <p class="reveal">Shelf is a lightweight, cross-platform clipboard history manager. It runs quietly in the background, capturing every text snippet and image you copy — so you can search, preview, and paste them back anytime.</p>
     <div class="hero-cta reveal">
@@ -458,7 +458,7 @@
       </a></span>
       <span class="magnetic"><a class="btn btn-ghost" href="https://github.com/hyojooo/Shelf" target="_blank" rel="noopener">View on GitHub</a></span>
     </div>
-    <div class="dl-alt reveal">Downloading for <b class="dl-os">your system</b> · <a href="https://github.com/hyojooo/Shelf/releases" target="_blank" rel="noopener">all platforms &amp; versions</a></div>
+    <div class="dl-alt reveal"><span class="dl-ver">v1.1.2</span> for <b class="dl-os">your system</b> · <a href="https://github.com/hyojooo/Shelf/releases" target="_blank" rel="noopener">all platforms &amp; versions</a></div>
 
     <div class="mockup reveal">
       <div class="mock-bar">
@@ -721,13 +721,47 @@
       return null;
     }
 
-    // Refresh version pill from latest release tag (cached 1h to be nice to the API)
-    try {
-      var cached = JSON.parse(localStorage.getItem('shelf-release') || 'null');
-      if (cached && Date.now() - cached.t < 3600000) {
-        document.querySelectorAll('.pill-ver').forEach(function (el) { el.textContent = cached.tag; });
+    // ── 版本展示：进入页面即同步最新 Release（缓存仅用于秒开，10 分钟过期）──
+    var STORE_KEY = 'shelf-release';
+    var CACHE_TTL = 10 * 60 * 1000;
+    var releaseCache = null;
+
+    function readCache() {
+      try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; }
+    }
+
+    function applyVersion(tag) {
+      if (!tag) return;
+      document.querySelectorAll('.pill-ver').forEach(function (el) { el.textContent = tag; });
+      document.querySelectorAll('.dl-ver').forEach(function (el) { el.textContent = tag; });
+    }
+
+    function fetchRelease() {
+      return fetch(GH_API, { headers: { Accept: 'application/vnd.github+json' } })
+        .then(function (r) { if (!r.ok) throw new Error('api'); return r.json(); })
+        .then(function (data) {
+          releaseCache = data;
+          applyVersion(data.tag_name);
+          try {
+            localStorage.setItem(STORE_KEY, JSON.stringify({ t: Date.now(), tag: data.tag_name }));
+          } catch (e) {}
+          return data;
+        });
+    }
+
+    // 先用缓存立刻渲染（避免闪烁），过期则立刻向 GitHub 拉最新
+    (function primeVersion() {
+      var cached = readCache();
+      if (cached && cached.tag) applyVersion(cached.tag);
+      if (!cached || Date.now() - cached.t > CACHE_TTL) {
+        fetchRelease().catch(function () {
+          // API 挂了/限流：退回缓存（哪怕已过期），再退回 HTML 里的兜底版本
+          if (cached && cached.tag) applyVersion(cached.tag);
+        });
+      } else {
+        releaseCache = cached;
       }
-    } catch (e) {}
+    })();
 
     document.querySelectorAll('.dl-btn').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
@@ -737,14 +771,9 @@
         var label = btn.querySelector('.dl-label');
         var orig = label ? label.textContent : '';
         if (label) label.textContent = 'Downloading…';
-        fetch(GH_API).then(function (r) {
-          if (!r.ok) throw new Error('api');
-          return r.json();
-        }).then(function (data) {
-          try {
-            localStorage.setItem('shelf-release', JSON.stringify({ t: Date.now(), tag: data.tag_name }));
-            document.querySelectorAll('.pill-ver').forEach(function (el) { el.textContent = data.tag_name; });
-          } catch (e) {}
+        (releaseCache && releaseCache.assets ? Promise.resolve(releaseCache) : fetchRelease())
+        .then(function (data) {
+          applyVersion(data.tag_name);
           var asset = pickAsset(data.assets || []);
           if (!asset) throw new Error('no-asset');
           window.location.href = asset.browser_download_url;

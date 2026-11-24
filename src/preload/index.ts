@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
-import { IPC, type Clip, type Settings } from '../shared/types';
+import {
+  IPC,
+  RENDERER_CHANNELS,
+  type Clip,
+  type Settings,
+} from '../shared/types';
+
+const allowedChannels = new Set<string>(RENDERER_CHANNELS);
 
 const api = {
   getAll: (): Promise<Clip[]> => ipcRenderer.invoke(IPC.GET_ALL),
@@ -21,9 +28,17 @@ const api = {
   getImageUrl: (id: string): Promise<string> =>
     ipcRenderer.invoke(IPC.GET_IMAGE_URL, { id }),
   installUpdate: (): void => ipcRenderer.send(IPC.INSTALL_UPDATE),
+  setShortcutCapture: (active: boolean): void =>
+    ipcRenderer.send(IPC.SHORTCUT_CAPTURE, active),
+  finishOnboarding: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.FINISH_ONBOARDING),
+  getOnboardingState: (): Promise<{ shortcut: string } | null> =>
+    ipcRenderer.invoke(IPC.GET_ONBOARDING_STATE),
   quit: (): Promise<boolean> => ipcRenderer.invoke(IPC.QUIT),
 
+  // 白名单：不向 renderer 暴露任意 ipc 频道的监听能力
   on: (channel: string, cb: (...args: any[]) => void): (() => void) => {
+    if (!allowedChannels.has(channel)) return () => {};
     const listener = (_e: IpcRendererEvent, ...args: any[]) => cb(...args);
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);

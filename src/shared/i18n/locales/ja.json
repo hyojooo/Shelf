@@ -73,5 +73,14 @@
   "update.background": "バックグラウンドで続行",
   "update.retry": "再試行",
   "update.errorSub": "アップデートの確認中に問題が発生しました",
-  "alert.shortcutError": "ホットキー \"{acc}\" の登録に失敗しました。システムや他のアプリで使用中の可能性があります。設定で変更してください。"
+  "alert.shortcutError": "ホットキー \"{acc}\" の登録に失敗しました。システムや他のアプリで使用中の可能性があります。設定で変更してください。",
+  "onboarding.title": "Shelf へようこそ",
+  "onboarding.desc": "クリップボード履歴は有効です。ショートカットでパネルを開き、項目をダブルクリックすると操作中のアプリに貼り付けられます。",
+  "onboarding.shortcut": "ショートカット",
+  "onboarding.tray": "画面右上のメニューバーからも Shelf を開けます。",
+  "onboarding.start": "使い始める",
+  "alert.pasteError": "貼り付けショートカットを送信できませんでした。「システム設定 → プライバシーとセキュリティ → アクセシビリティ / 自動操作」で Shelf を許可するか、「コピー」して手動で貼り付けてください。",
+  "settings.capturePlaceholder": "— ショートカットを押す —",
+  "settings.captureHint": "Esc または別の場所をクリックでキャンセル",
+  "settings.needModifier": "修飾キー（⌘ / ⌃ / ⌥ / ⇧）を少なくとも 1 つ押してください"
 }

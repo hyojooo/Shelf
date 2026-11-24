@@ -25,6 +25,18 @@ export async function saveSettings(
   partial: Partial<Settings>,
 ): Promise<Settings> {
   settings = { ...settings, ...partial };
-  await fs.writeFile(file(), JSON.stringify(settings, null, 2), 'utf8');
+  const target = file();
+  const tmp = `${target}.${process.pid}.tmp`;
+  try {
+    await fs.writeFile(tmp, JSON.stringify(settings, null, 2), 'utf8');
+    await fs.rename(tmp, target);
+  } catch (e) {
+    console.error('[settings] save failed', e);
+    try {
+      await fs.unlink(tmp);
+    } catch {
+      /* ignore */
+    }
+  }
   return settings;
 }

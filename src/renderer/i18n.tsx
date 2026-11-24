@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -33,6 +34,9 @@ export function useLang(): Language {
 
 export function useT() {
   const lang = useContext(LangContext);
-  return (key: string, params?: Record<string, string | number>) =>
-    t(lang, key, params);
+  return useCallback(
+    (key: string, params?: Record<string, string | number>) =>
+      t(lang, key, params),
+    [lang],
+  );
 }

@@ -73,5 +73,14 @@
   "update.background": "背景下載",
   "update.retry": "重試",
   "update.errorSub": "檢查更新時發生問題",
-  "alert.shortcutError": "快捷鍵 \"{acc}\" 註冊失敗，可能已被系統或其它程式佔用，請在設定中更換。"
+  "alert.shortcutError": "快捷鍵 \"{acc}\" 註冊失敗，可能已被系統或其它程式佔用，請在設定中更換。",
+  "onboarding.title": "歡迎使用 Shelf",
+  "onboarding.desc": "剪貼板記錄已啟動。隨時按快捷鍵叫出面板，雙擊項目即可貼回你正在使用的應用程式。",
+  "onboarding.shortcut": "目前快捷鍵",
+  "onboarding.tray": "也可以在螢幕右上角的選單列找到 Shelf 圖示。",
+  "onboarding.start": "開始使用",
+  "alert.pasteError": "無法傳送貼上快捷鍵。請在「系統設定 → 隱私權與安全性 → 輔助使用 / 自動化」中允許 Shelf，或改用「複製」後手動貼上。",
+  "settings.capturePlaceholder": "— 請按下組合鍵 —",
+  "settings.captureHint": "按 Esc 或點擊別處取消",
+  "settings.needModifier": "請至少按住一個修飾鍵（⌘ / ⌃ / ⌥ / ⇧）"
 }

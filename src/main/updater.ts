@@ -7,19 +7,21 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 const updateWindows: Array<() => BrowserWindow | null> = [];
+let downloaded = false;
+
+function broadcast(payload: Record<string, unknown>): void {
+  for (const getW of updateWindows) {
+    const w = getW();
+    if (w && !w.isDestroyed()) w.webContents.send(IPC.UPDATE_STATE, payload);
+  }
+}
 
 export function setupUpdater(getWindow: () => BrowserWindow | null): void {
-  updateWindows.push(getWindow);
-
-  const broadcast = (payload: Record<string, unknown>) => {
-    for (const getW of updateWindows) {
-      const w = getW();
-      if (w && !w.isDestroyed()) w.webContents.send(IPC.UPDATE_STATE, payload);
-    }
-  };
+  if (!updateWindows.includes(getWindow)) updateWindows.push(getWindow);
 
   autoUpdater.on('update-available', (info) => {
     logInfo(`update available: ${info.version}`);
+    downloaded = false;
     broadcast({
       status: 'available',
       version: info.version,
@@ -33,6 +35,7 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): void {
     broadcast({ status: 'progress', percent: p.percent });
   });
   autoUpdater.on('update-downloaded', () => {
+    downloaded = true;
     broadcast({ status: 'downloaded' });
   });
   autoUpdater.on('error', (e) => {
@@ -45,18 +48,19 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): void {
 export function registerUpdateWindow(
   getWindow: () => BrowserWindow | null,
 ): void {
-  updateWindows.push(getWindow);
+  if (!updateWindows.includes(getWindow)) updateWindows.push(getWindow);
 }
 
-export async function checkForUpdates(
-  getWindow?: () => BrowserWindow | null,
-): Promise<unknown> {
+export function isUpdateDownloaded(): boolean {
+  return downloaded;
+}
+
+export async function checkForUpdates(): Promise<unknown> {
   try {
     return await autoUpdater.checkForUpdates();
   } catch (e) {
     logError(e, 'updater');
-    // 通知渲染进程检查失败（不再静默吞掉）
-    getWindow?.()?.webContents.send(IPC.UPDATE_STATE, {
+    broadcast({
       status: 'error',
       message: String(e instanceof Error ? e.message : e),
     });
@@ -66,9 +70,14 @@ export async function checkForUpdates(
 
 export async function downloadUpdate(): Promise<unknown> {
   try {
+    downloaded = false;
     return await autoUpdater.downloadUpdate();
   } catch (e) {
     logError(e, 'updater');
+    broadcast({
+      status: 'error',
+      message: String(e instanceof Error ? e.message : e),
+    });
     return null;
   }
 }

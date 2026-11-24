@@ -43,7 +43,21 @@ export const useStore = create<UIState>((set) => ({
   updateStatus: 'idle',
   updatePercent: 0,
   toast: null,
-  setClips: (clips) => set({ clips }),
+  setClips: (clips) =>
+    set((state) => {
+      const ids = new Set(clips.map((c) => c.id));
+      return {
+        clips,
+        selectedId:
+          state.selectedId && ids.has(state.selectedId)
+            ? state.selectedId
+            : null,
+        previewId:
+          state.previewId && ids.has(state.previewId)
+            ? state.previewId
+            : null,
+      };
+    }),
   setTab: (tab) => set({ tab }),
   setQuery: (query) => set({ query }),
   select: (selectedId) => set({ selectedId }),

@@ -12,7 +12,7 @@ interface Props {
   onFavorite: (id: string, favorite: boolean) => void;
 }
 
-const ROW_HEIGHT = 76;
+const ROW_HEIGHT = 72;
 
 export default function ClipList(props: Props) {
   return (

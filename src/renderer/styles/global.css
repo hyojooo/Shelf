@@ -635,40 +635,88 @@ body {
 
 
 .shortcut-capture {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 12px;
+  padding: 5px 7px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
   user-select: none;
   flex-shrink: 0;
-  min-width: 160px;
+  align-self: flex-end;
 }
 .shortcut-capture:hover {
   border-color: var(--accent);
+  background: var(--hover);
 }
 .shortcut-capture.capturing {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--bg);
+}
+
+.shortcut-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .shortcut-capture kbd {
   font-family: 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: center;
   color: var(--text);
   background: var(--panel);
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 5px;
   border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.shortcut-capture.capturing kbd {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
-.shortcut-hint {
-  font-size: 11px;
+.shortcut-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   color: var(--muted);
+  opacity: 0.55;
+  transition: color 0.15s, opacity 0.15s;
+}
+.shortcut-capture:hover .shortcut-edit {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.shortcut-cancel {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.shortcut-cancel:hover {
+  color: var(--danger);
+}
+
+.shortcut-sub {
+  display: none;
 }
 
 
@@ -1349,4 +1397,191 @@ body {
 .upd-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* ── First-run onboarding ─────────────────────────────────── */
+
+.onb-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(16, 18, 20, 0.42);
+  backdrop-filter: blur(8px) saturate(130%);
+  -webkit-backdrop-filter: blur(8px) saturate(130%);
+  animation: fade-in 0.18s ease-out;
+}
+
+.onb-card {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 22px 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+  animation: upd-pop 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onb-mark {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(158deg, #12b981 0%, #059669 100%);
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.24);
+}
+
+:root[data-theme='dark'] .onb-mark {
+  color: #052b1f;
+  background: linear-gradient(158deg, #34d399 0%, #10b981 100%);
+}
+
+.onb-title {
+  margin: 14px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+
+.onb-desc {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.onb-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.onb-shortcut kbd {
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.onb-hint {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.onb-btn {
+  width: 100%;
+  height: 36px;
+  margin-top: 18px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(158deg, #12b981 0%, #059669 100%);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.22);
+  cursor: pointer;
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s ease;
+}
+
+:root[data-theme='dark'] .onb-btn {
+  color: #052b1f;
+  background: linear-gradient(158deg, #34d399 0%, #10b981 100%);
+}
+
+.onb-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(5, 150, 105, 0.26);
+}
+
+.onb-btn:active {
+  transform: scale(0.985);
+}
+
+.onb-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Shortcut capture states ─────────────────────────────── */
+
+.shortcut-capture kbd.pending {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-style: dashed;
+  border-color: var(--accent);
+  font-style: normal;
+}
+
+.shortcut-capture:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shortcut-error {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--danger);
+}
+
+/* 快捷键输入框：捕获时清空内容并显示闪烁光标 */
+.shortcut-capture kbd.pending {
+  min-width: 76px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+.shortcut-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: shortcut-blink 1s steps(1, end) infinite;
+}
+
+@keyframes shortcut-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }

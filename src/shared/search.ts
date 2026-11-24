@@ -25,7 +25,7 @@ export function formatTimestamp(ts: number): string {
 export function fuzzyScore(query: string, target: string): number {
   if (!query) return 0;
   const q = query.toLowerCase();
-  const t = target.toLowerCase();
+  const t = target.slice(0, 2000).toLowerCase();
   let qi = 0;
   let score = 0;
   let lastMatch = -2;
